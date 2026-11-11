@@ -6,6 +6,8 @@ using SimpleVpn.App;
 using SimpleVpn.App.Localization;
 using SimpleVpn.Core.Abstractions;
 using SimpleVpn.Core.Connection;
+using SimpleVpn.Core.Net;
+using SimpleVpn.Core.Routing;
 using SimpleVpn.Core.Storage;
 using SimpleVpn.Desktop.Platform;
 
@@ -72,6 +74,7 @@ internal static partial class Program
 
         services.AddSingleton<SettingsStore>();
         services.AddSingleton<ProfileRepository>();
+        services.AddSingleton<PresetRepository>();
 
         services.AddSingleton<ICoreRunner>(sp =>
             new XrayProcessRunner(Path.Combine(paths.CoreDirectory, "xray.exe"), sp.GetRequiredService<ILoggerFactory>()));
@@ -79,6 +82,7 @@ internal static partial class Program
         services.AddSingleton<INetworkProbe, LoopbackNetworkProbe>();
         services.AddSingleton<ConnectionManager>();
         services.AddSingleton<IConnectionManager>(sp => sp.GetRequiredService<ConnectionManager>());
+        services.AddSingleton<HttpDownloader>();
 
         services.AddSimpleVpnApp();
 

@@ -5,9 +5,9 @@ public sealed record ProfilesDocument
 {
     public const int CurrentSchemaVersion = 1;
 
-    public int SchemaVersion { get; init; } = CurrentSchemaVersion;
+    public int SchemaVersion { get; set; } = CurrentSchemaVersion;
 
-    public Guid? SelectedId { get; init; }
+    public Guid? SelectedId { get; set; }
 
-    public IReadOnlyList<ServerProfile> Profiles { get; init; } = [];
+    public IReadOnlyList<ServerProfile> Profiles { get; set; } = [];
 }

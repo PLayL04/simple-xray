@@ -6,15 +6,20 @@ using SimpleVpn.App.Services;
 using SimpleVpn.Core.Connection;
 using SimpleVpn.Core.Models;
 using SimpleVpn.Core.Parsing;
+using SimpleVpn.Core.Routing;
 using SimpleVpn.Core.Storage;
 
 namespace SimpleVpn.App.ViewModels;
 
-/// <summary>Main screen: the power button, status, server selection and the "add server" panel.</summary>
+/// <summary>
+/// Main screen: the power button, status, server and routing preset pickers, the "add server" panel,
+/// and the entry to the settings screen.
+/// </summary>
 public sealed partial class MainViewModel : ViewModelBase, IDisposable
 {
     private readonly IConnectionManager _connection;
     private readonly ProfileRepository _profiles;
+    private readonly PresetRepository _presets;
     private readonly IClipboardService _clipboard;
     private readonly IUiDispatcher _ui;
     private bool _syncingSelection;
@@ -37,23 +42,41 @@ public sealed partial class MainViewModel : ViewModelBase, IDisposable
     [ObservableProperty]
     private string? _addServerError;
 
-    // Placeholder until routing presets (M2) exist.
     [ObservableProperty]
-    private string _presetName = Loc.Get("Preset_Global");
+    private PresetItem? _selectedPreset;
 
-    public MainViewModel(IConnectionManager connection, ProfileRepository profiles, IClipboardService clipboard, IUiDispatcher ui)
+    [ObservableProperty]
+    private bool _isSettingsOpen;
+
+    public MainViewModel(
+        IConnectionManager connection,
+        ProfileRepository profiles,
+        PresetRepository presets,
+        IClipboardService clipboard,
+        IUiDispatcher ui,
+        SettingsViewModel settings)
     {
         _connection = connection;
         _profiles = profiles;
+        _presets = presets;
         _clipboard = clipboard;
         _ui = ui;
+        Settings = settings;
         _state = connection.State;
         _connection.StateChanged += OnStateChanged;
         _profiles.Changed += OnProfilesChanged;
+        _presets.Changed += OnPresetsChanged;
+        Settings.CloseRequested += OnSettingsCloseRequested;
         ReloadServers();
+        ReloadPresets();
     }
 
+    public SettingsViewModel Settings { get; }
+
     public ObservableCollection<ServerProfile> Servers { get; } = [];
+
+    /// <summary>Quick routing switch on the main screen.</summary>
+    public ObservableCollection<PresetItem> Presets { get; } = [];
 
     public bool HasServers => Servers.Count > 0;
 
@@ -169,6 +192,49 @@ public sealed partial class MainViewModel : ViewModelBase, IDisposable
         _profiles.Remove(server.Id);
     }
 
+    [RelayCommand]
+    private void OpenSettings()
+    {
+        Settings.Refresh();
+        IsSettingsOpen = true;
+    }
+
+    private void OnSettingsCloseRequested(object? sender, EventArgs e) => IsSettingsOpen = false;
+
+    /// <summary>Switching the preset while connected restarts the core in place (no "Disconnected" in between).</summary>
+    partial void OnSelectedPresetChanged(PresetItem? value)
+    {
+        if (_syncingSelection || value is null || value.Id == _presets.Selected.Id)
+        {
+            return;
+        }
+
+        _presets.Select(value.Id);
+        _ = _connection.ReconnectIfConnectedAsync();
+    }
+
+    private void ReloadPresets()
+    {
+        _syncingSelection = true;
+        try
+        {
+            Presets.Clear();
+            foreach (var preset in _presets.Presets)
+            {
+                Presets.Add(new PresetItem(preset));
+            }
+
+            var activeId = _presets.Selected.Id;
+            SelectedPreset = Presets.FirstOrDefault(p => p.Id == activeId);
+        }
+        finally
+        {
+            _syncingSelection = false;
+        }
+    }
+
+    private void OnPresetsChanged(object? sender, EventArgs e) => _ui.Post(ReloadPresets);
+
     partial void OnSelectedServerChanged(ServerProfile? value)
     {
         if (_syncingSelection || value is null || value.Id == _profiles.Selected?.Id)
@@ -230,5 +296,8 @@ public sealed partial class MainViewModel : ViewModelBase, IDisposable
     {
         _connection.StateChanged -= OnStateChanged;
         _profiles.Changed -= OnProfilesChanged;
+        _presets.Changed -= OnPresetsChanged;
+        Settings.CloseRequested -= OnSettingsCloseRequested;
+        Settings.Dispose();
     }
 }

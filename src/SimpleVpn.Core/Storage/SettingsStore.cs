@@ -14,13 +14,16 @@ public sealed class SettingsStore
         _paths = paths;
     }
 
+    /// <summary>Raised after <see cref="Save"/>. May be raised on any thread.</summary>
+    public event EventHandler? Changed;
+
     public AppSettings Settings
     {
         get
         {
             lock (_lock)
             {
-                return _settings ??= JsonFile.Read(_paths.SettingsFile, CoreJsonContext.Default.AppSettings) ?? new AppSettings();
+                return _settings ??= Load();
             }
         }
     }
@@ -33,7 +36,28 @@ public sealed class SettingsStore
             JsonFile.Write(_paths.SettingsFile, settings, CoreJsonContext.Default.AppSettings);
             _settings = settings;
         }
+
+        Changed?.Invoke(this, EventArgs.Empty);
     }
+
+    /// <summary>Applies <paramref name="change"/> to the current settings and saves the result.</summary>
+    public AppSettings Update(Func<AppSettings, AppSettings> change)
+    {
+        ArgumentNullException.ThrowIfNull(change);
+        AppSettings updated;
+        lock (_lock)
+        {
+            updated = change(_settings ??= Load());
+            JsonFile.Write(_paths.SettingsFile, updated, CoreJsonContext.Default.AppSettings);
+            _settings = updated;
+        }
+
+        Changed?.Invoke(this, EventArgs.Empty);
+        return updated;
+    }
+
+    private AppSettings Load() =>
+        JsonFile.Read(_paths.SettingsFile, CoreJsonContext.Default.AppSettings) ?? new AppSettings();
 
     public RuntimeState LoadState() =>
         JsonFile.Read(_paths.StateFile, CoreJsonContext.Default.RuntimeState) ?? new RuntimeState();

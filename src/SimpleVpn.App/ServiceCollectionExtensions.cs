@@ -11,6 +11,8 @@ public static class ServiceCollectionExtensions
     {
         services.AddSingleton<IClipboardService, AvaloniaClipboardService>();
         services.AddSingleton<IUiDispatcher, AvaloniaUiDispatcher>();
+        services.AddSingleton<IFileService, AvaloniaFileService>();
+        services.AddTransient<SettingsViewModel>();
         services.AddTransient<MainViewModel>();
         return services;
     }

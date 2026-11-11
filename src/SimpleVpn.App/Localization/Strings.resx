@@ -18,8 +18,6 @@
   <data name="Server_None" xml:space="preserve"><value>Не добавлен</value></data>
   <data name="Server_Add" xml:space="preserve"><value>Добавить сервер</value></data>
   <data name="Server_Remove" xml:space="preserve"><value>Удалить сервер</value></data>
-  <data name="Preset_Global" xml:space="preserve"><value>Всё через прокси</value></data>
-  <data name="Preset_BypassRu" xml:space="preserve"><value>Всё, кроме RU</value></data>
   <data name="AddServer_Title" xml:space="preserve"><value>Новый сервер</value></data>
   <data name="AddServer_Hint" xml:space="preserve"><value>Вставьте ссылку vless://, которую прислал администратор сервера.</value></data>
   <data name="AddServer_Paste" xml:space="preserve"><value>Вставить из буфера</value></data>
@@ -40,4 +38,103 @@
   <data name="LinkError_MissingAddress" xml:space="preserve"><value>В ссылке нет адреса сервера</value></data>
   <data name="LinkError_InvalidPort" xml:space="preserve"><value>Неверный порт сервера в ссылке</value></data>
   <data name="LinkError_InvalidParameter" xml:space="preserve"><value>Ссылка содержит неподдерживаемые параметры</value></data>
+  <data name="Settings_Title" xml:space="preserve"><value>Настройки</value></data>
+  <data name="Common_Back" xml:space="preserve"><value>Назад</value></data>
+  <data name="Common_Save" xml:space="preserve"><value>Сохранить</value></data>
+  <data name="Settings_ModeSection" xml:space="preserve"><value>Способ подключения</value></data>
+  <data name="Mode_SystemProxy" xml:space="preserve"><value>Системный прокси</value></data>
+  <data name="Mode_SystemProxyHint" xml:space="preserve"><value>Браузеры и большинство программ. Права администратора не нужны.</value></data>
+  <data name="Mode_Tun" xml:space="preserve"><value>VPN (TUN)</value></data>
+  <data name="Mode_TunHint" xml:space="preserve"><value>Весь трафик системы, нужны права администратора. Появится в следующей версии.</value></data>
+  <data name="Settings_RoutingSection" xml:space="preserve"><value>Маршрутизация</value></data>
+  <data name="Settings_RoutingHint" xml:space="preserve"><value>Какой трафик идёт через прокси. Активный пресет можно переключать и на главном экране.</value></data>
+  <data name="Presets_Active" xml:space="preserve"><value>активен</value></data>
+  <data name="Presets_BuiltIn" xml:space="preserve"><value>Встроенный</value></data>
+  <data name="Presets_Custom" xml:space="preserve"><value>Свой</value></data>
+  <data name="Presets_FromSource" xml:space="preserve"><value>Загружен с {0}</value></data>
+  <data name="Presets_Activate" xml:space="preserve"><value>Использовать</value></data>
+  <data name="Presets_View" xml:space="preserve"><value>Правила</value></data>
+  <data name="Presets_Duplicate" xml:space="preserve"><value>Дублировать</value></data>
+  <data name="Presets_Delete" xml:space="preserve"><value>Удалить</value></data>
+  <data name="Presets_ConfirmDelete" xml:space="preserve"><value>Удалить выбранный пресет? Это нельзя отменить.</value></data>
+  <data name="Presets_Export" xml:space="preserve"><value>Экспорт в файл</value></data>
+  <data name="Presets_ImportFile" xml:space="preserve"><value>Импорт из файла</value></data>
+  <data name="Presets_ImportUrl" xml:space="preserve"><value>Импорт по ссылке</value></data>
+  <data name="Presets_ImportUrlHint" xml:space="preserve"><value>Ссылка на JSON-файл пресета (https://…)</value></data>
+  <data name="Presets_Import" xml:space="preserve"><value>Импортировать</value></data>
+  <data name="Presets_UpdateFromSource" xml:space="preserve"><value>Обновить с источника</value></data>
+  <data name="Presets_CopyName" xml:space="preserve"><value>{0} (копия)</value></data>
+  <data name="Presets_Deleted" xml:space="preserve"><value>Пресет «{0}» удалён</value></data>
+  <data name="Presets_Exported" xml:space="preserve"><value>Пресет сохранён в файл</value></data>
+  <data name="Presets_Imported" xml:space="preserve"><value>Пресет «{0}» добавлен. Нажмите «Использовать», чтобы включить его.</value></data>
+  <data name="Presets_Updated" xml:space="preserve"><value>Пресет обновлён</value></data>
+  <data name="Presets_Downloading" xml:space="preserve"><value>Загрузка…</value></data>
+  <data name="Presets_FileError" xml:space="preserve"><value>Ошибка файла</value></data>
+  <data name="PresetError_Malformed" xml:space="preserve"><value>Файл пресета повреждён или имеет неверный формат</value></data>
+  <data name="PresetError_TooLarge" xml:space="preserve"><value>Файл пресета слишком большой (больше 1 МБ)</value></data>
+  <data name="PresetError_UnsupportedVersion" xml:space="preserve"><value>Пресет создан более новой версией приложения — обновите приложение</value></data>
+  <data name="PresetError_MissingName" xml:space="preserve"><value>Укажите название пресета</value></data>
+  <data name="PresetError_EmptyRule" xml:space="preserve"><value>В правиле нет ни одного условия</value></data>
+  <data name="PresetError_InvalidDomain" xml:space="preserve"><value>Неверный домен</value></data>
+  <data name="PresetError_InvalidIp" xml:space="preserve"><value>Неверный IP-адрес или подсеть</value></data>
+  <data name="PresetError_InvalidPort" xml:space="preserve"><value>Неверный порт</value></data>
+  <data name="PresetError_InvalidNetwork" xml:space="preserve"><value>Неверный тип сети</value></data>
+  <data name="PresetError_InvalidProtocol" xml:space="preserve"><value>Неизвестный протокол</value></data>
+  <data name="PresetError_InvalidDomainStrategy" xml:space="preserve"><value>Неверный способ разрешения доменов</value></data>
+  <data name="PresetError_BuiltInReadOnly" xml:space="preserve"><value>Встроенный пресет нельзя изменить — сделайте копию</value></data>
+  <data name="PresetError_NotFound" xml:space="preserve"><value>Пресет не найден</value></data>
+  <data name="PresetError_InvalidUrl" xml:space="preserve"><value>Нужна ссылка вида https://…</value></data>
+  <data name="PresetError_DownloadFailed" xml:space="preserve"><value>Не удалось скачать пресет</value></data>
+  <data name="PresetError_InRule" xml:space="preserve"><value>Правило {0}: {1}</value></data>
+  <data name="Editor_Title" xml:space="preserve"><value>Редактор пресета</value></data>
+  <data name="Editor_TitleView" xml:space="preserve"><value>Встроенный пресет (только просмотр)</value></data>
+  <data name="Editor_Name" xml:space="preserve"><value>Название</value></data>
+  <data name="Editor_Default" xml:space="preserve"><value>Остальной трафик</value></data>
+  <data name="Editor_DomainStrategy" xml:space="preserve"><value>Сопоставление доменов и IP</value></data>
+  <data name="Strategy_AsIs" xml:space="preserve"><value>Только по доменам (AsIs)</value></data>
+  <data name="Strategy_IPIfNonMatch" xml:space="preserve"><value>Домены, затем IP (IPIfNonMatch)</value></data>
+  <data name="Strategy_IPOnDemand" xml:space="preserve"><value>Сразу по IP (IPOnDemand)</value></data>
+  <data name="Editor_Rules" xml:space="preserve"><value>Правила: проверяются сверху вниз, срабатывает первое подходящее</value></data>
+  <data name="Editor_Hint" xml:space="preserve"><value>Внутри правила домены и IP — варианты (ИЛИ), а порт, сеть и протокол сужают условие (И).</value></data>
+  <data name="Editor_RuleNumber" xml:space="preserve"><value>Правило {0}</value></data>
+  <data name="Editor_RuleName" xml:space="preserve"><value>Комментарий</value></data>
+  <data name="Editor_RuleEnabled" xml:space="preserve"><value>Включено</value></data>
+  <data name="Editor_Domains" xml:space="preserve"><value>Домены, по одному в строке (geosite:…, domain:…, full:…)</value></data>
+  <data name="Editor_Ips" xml:space="preserve"><value>IP и подсети, по одному в строке (geoip:…, 10.0.0.0/8)</value></data>
+  <data name="Editor_Port" xml:space="preserve"><value>Порты (443, 1000-2000)</value></data>
+  <data name="Editor_Network" xml:space="preserve"><value>Сеть</value></data>
+  <data name="Network_Any" xml:space="preserve"><value>Любая</value></data>
+  <data name="Editor_Protocols" xml:space="preserve"><value>Протоколы (http, tls, quic, bittorrent)</value></data>
+  <data name="Editor_Target" xml:space="preserve"><value>Куда направить</value></data>
+  <data name="Outbound_Proxy" xml:space="preserve"><value>Через прокси</value></data>
+  <data name="Outbound_Direct" xml:space="preserve"><value>Напрямую</value></data>
+  <data name="Outbound_Block" xml:space="preserve"><value>Блокировать</value></data>
+  <data name="Editor_AddRule" xml:space="preserve"><value>Добавить правило</value></data>
+  <data name="Editor_MoveUp" xml:space="preserve"><value>Выше</value></data>
+  <data name="Editor_MoveDown" xml:space="preserve"><value>Ниже</value></data>
+  <data name="Editor_RemoveRule" xml:space="preserve"><value>Удалить правило</value></data>
+  <data name="Editor_ShowJson" xml:space="preserve"><value>Как JSON</value></data>
+  <data name="Editor_ShowForm" xml:space="preserve"><value>Как форму</value></data>
+  <data name="Editor_SaveFailed" xml:space="preserve"><value>Не удалось сохранить</value></data>
+  <data name="Settings_GeneralSection" xml:space="preserve"><value>Общие</value></data>
+  <data name="Settings_Language" xml:space="preserve"><value>Язык интерфейса</value></data>
+  <data name="Language_System" xml:space="preserve"><value>Как в системе</value></data>
+  <data name="Language_Ru" xml:space="preserve"><value>Русский</value></data>
+  <data name="Language_En" xml:space="preserve"><value>English</value></data>
+  <data name="Settings_LanguageRestart" xml:space="preserve"><value>Язык сменится после перезапуска приложения</value></data>
+  <data name="Settings_AdvancedSection" xml:space="preserve"><value>Дополнительно</value></data>
+  <data name="Settings_SocksPort" xml:space="preserve"><value>Локальный порт SOCKS</value></data>
+  <data name="Settings_HttpPort" xml:space="preserve"><value>Локальный порт HTTP</value></data>
+  <data name="Settings_RemoteDns" xml:space="preserve"><value>DNS через прокси</value></data>
+  <data name="Settings_DirectDns" xml:space="preserve"><value>DNS для прямых соединений (localhost — системный)</value></data>
+  <data name="Settings_PreferIPv4" xml:space="preserve"><value>Только IPv4</value></data>
+  <data name="Settings_LogLevel" xml:space="preserve"><value>Подробность лога ядра</value></data>
+  <data name="Settings_Apply" xml:space="preserve"><value>Применить</value></data>
+  <data name="Settings_Reset" xml:space="preserve"><value>По умолчанию</value></data>
+  <data name="Settings_Applied" xml:space="preserve"><value>Сохранено. Новые порты начнут работать со следующего подключения.</value></data>
+  <data name="Settings_InvalidPorts" xml:space="preserve"><value>Порты должны быть разными, от 1024 до 65535</value></data>
+  <data name="Settings_InvalidRemoteDns" xml:space="preserve"><value>Укажите адрес DNS-сервера</value></data>
+  <data name="Settings_InvalidDirectDns" xml:space="preserve"><value>Укажите localhost или IP-адрес</value></data>
+  <data name="Settings_OpenLogs" xml:space="preserve"><value>Открыть папку с логами</value></data>
+  <data name="Settings_About" xml:space="preserve"><value>SimpleVpn, версия {0}</value></data>
 </root>

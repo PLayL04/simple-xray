@@ -30,4 +30,12 @@ public static class Loc
 
     /// <summary>Returns the localized string, or <c>[key]</c> if it is missing (visible in UI, never throws).</summary>
     public static string Get(string key) => Resources.GetString(key, Culture) ?? $"[{key}]";
+
+    /// <summary>Formats a localized pattern (<c>{0}</c> placeholders) with the UI culture.</summary>
+    public static string Format(string key, params object[] args)
+    {
+#pragma warning disable CA1863 // Patterns come from resources and change with the culture; caching is not worth it.
+        return string.Format(Culture, Get(key), args);
+#pragma warning restore CA1863
+    }
 }

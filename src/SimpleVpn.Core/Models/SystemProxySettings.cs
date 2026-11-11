@@ -6,19 +6,19 @@ namespace SimpleVpn.Core.Models;
 /// </summary>
 public sealed record SystemProxySettings
 {
-    public bool Enabled { get; init; }
+    public bool Enabled { get; set; }
 
     /// <summary>"host:port" or WinINet per-protocol syntax ("http=...;https=...").</summary>
-    public string? Server { get; init; }
+    public string? Server { get; set; }
 
     /// <summary>Bypass list, ';'-separated.</summary>
-    public string? Bypass { get; init; }
+    public string? Bypass { get; set; }
 
     /// <summary>PAC script URL (takes precedence over the manual proxy in WinINet).</summary>
-    public string? AutoConfigUrl { get; init; }
+    public string? AutoConfigUrl { get; set; }
 
     /// <summary>WPAD auto-detection (takes precedence over PAC and the manual proxy).</summary>
-    public bool AutoDetect { get; init; }
+    public bool AutoDetect { get; set; }
 
     /// <summary>Default bypass list: loopback, private networks and plain host names.</summary>
     public const string DefaultBypass =

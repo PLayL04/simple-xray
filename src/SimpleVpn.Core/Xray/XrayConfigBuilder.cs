@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using SimpleVpn.Core.Models;
+using SimpleVpn.Core.Routing;
 
 namespace SimpleVpn.Core.Xray;
 
@@ -12,6 +13,11 @@ public sealed record XrayConfigRequest
     public required int SocksPort { get; init; }
 
     public required int HttpPort { get; init; }
+
+    /// <summary>Routing preset; defaults to "everything via proxy".</summary>
+    public RoutingPreset Preset { get; init; } = BuiltInPresets.Global;
+
+    public DnsSettings Dns { get; init; } = new();
 
     /// <summary>Xray log level: debug, info, warning, error, none.</summary>
     public string LogLevel { get; init; } = "warning";
@@ -27,6 +33,9 @@ public static class XrayConfigBuilder
     public const string DirectTag = "direct";
     public const string BlockTag = "block";
     public const string Loopback = "127.0.0.1";
+
+    /// <summary>Inbound tag of queries made by Xray's own DNS module (used to route them).</summary>
+    public const string DnsTag = "dns-module";
 
     private static readonly JsonSerializerOptions Indented = new() { WriteIndented = true };
 
@@ -47,20 +56,137 @@ public static class XrayConfigBuilder
                 ProxyOutbound(request.Profile),
                 new JsonObject { ["tag"] = DirectTag, ["protocol"] = "freedom" },
                 new JsonObject { ["tag"] = BlockTag, ["protocol"] = "blackhole" }),
-            // TODO(M2): routing presets and DNS. For now: everything via proxy except private networks.
-            ["routing"] = new JsonObject
-            {
-                ["domainStrategy"] = "AsIs",
-                ["rules"] = new JsonArray(
-                    new JsonObject
-                    {
-                        ["type"] = "field",
-                        ["ip"] = new JsonArray("geoip:private"),
-                        ["outboundTag"] = DirectTag,
-                    }),
-            },
+            ["dns"] = Dns(request.Preset, request.Dns),
+            ["routing"] = Routing(request.Preset, request.Dns),
         };
     }
+
+    /// <summary>
+    /// Domains that leave directly are resolved by the direct resolver, the rest by the remote one through the proxy.
+    /// For presets where unmatched traffic goes direct it is the other way round: proxied domains get the remote resolver.
+    /// </summary>
+    private static JsonObject Dns(RoutingPreset preset, DnsSettings dns)
+    {
+        var defaultIsDirect = preset.DefaultOutbound == RouteOutbound.Direct;
+        var scopedOutbound = defaultIsDirect ? RouteOutbound.Proxy : RouteOutbound.Direct;
+        var scopedDomains = preset.Rules
+            .Where(r => r.Enabled && r.Outbound == scopedOutbound && IsUnconditional(r))
+            .SelectMany(r => r.Domain)
+            .Where(IsDnsDomainMatcher)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        var (fallback, scoped) = defaultIsDirect ? (dns.DirectServer, dns.RemoteServer) : (dns.RemoteServer, dns.DirectServer);
+        var servers = new JsonArray((JsonNode)fallback);
+        if (scopedDomains.Length > 0)
+        {
+            servers.Add((JsonNode)new JsonObject
+            {
+                ["address"] = scoped,
+                ["domains"] = new JsonArray([.. scopedDomains.Select(d => (JsonNode)d)]),
+                ["skipFallback"] = true,
+            });
+        }
+
+        return new JsonObject
+        {
+            ["servers"] = servers,
+            ["queryStrategy"] = dns.PreferIPv4 ? "UseIPv4" : "UseIP",
+            ["tag"] = DnsTag,
+        };
+    }
+
+    private static JsonObject Routing(RoutingPreset preset, DnsSettings dns)
+    {
+        var rules = new JsonArray();
+
+        // Xray's own DNS queries: the direct resolver leaves directly, everything else goes through the proxy.
+        // ("localhost" is the system resolver and does not pass through routing at all.)
+        if (IPAddress.TryParse(dns.DirectServer, out _))
+        {
+            rules.Add((JsonNode)new JsonObject
+            {
+                ["inboundTag"] = new JsonArray(DnsTag),
+                ["ip"] = new JsonArray(dns.DirectServer),
+                ["outboundTag"] = DirectTag,
+            });
+        }
+
+        rules.Add((JsonNode)new JsonObject { ["inboundTag"] = new JsonArray(DnsTag), ["outboundTag"] = ProxyTag });
+
+        foreach (var rule in preset.Rules.Where(r => r.Enabled))
+        {
+            // Domains and IPs in one preset rule are alternatives; in one Xray rule they would both have to match.
+            if (rule.Domain.Count > 0)
+            {
+                rules.Add((JsonNode)XrayRule(rule, domain: rule.Domain, ip: null));
+            }
+
+            if (rule.Ip.Count > 0)
+            {
+                rules.Add((JsonNode)XrayRule(rule, domain: null, ip: rule.Ip));
+            }
+
+            if (rule.Domain.Count == 0 && rule.Ip.Count == 0)
+            {
+                rules.Add((JsonNode)XrayRule(rule, domain: null, ip: null));
+            }
+        }
+
+        // Unmatched traffic. Without this rule Xray would use the first outbound (proxy).
+        rules.Add((JsonNode)new JsonObject { ["network"] = "tcp,udp", ["outboundTag"] = OutboundTag(preset.DefaultOutbound) });
+
+        return new JsonObject
+        {
+            ["domainStrategy"] = preset.DomainStrategy,
+            ["rules"] = rules,
+        };
+    }
+
+    private static JsonObject XrayRule(RoutingRule rule, IReadOnlyList<string>? domain, IReadOnlyList<string>? ip)
+    {
+        var result = new JsonObject();
+        if (domain is not null)
+        {
+            result["domain"] = StringArray(domain);
+        }
+
+        if (ip is not null)
+        {
+            result["ip"] = StringArray(ip);
+        }
+
+        AddIfSet(result, "port", rule.Port);
+        AddIfSet(result, "network", rule.Network);
+        if (rule.Protocol.Count > 0)
+        {
+            result["protocol"] = StringArray(rule.Protocol);
+        }
+
+        if (rule.Process.Count > 0)
+        {
+            result["process"] = StringArray(rule.Process);
+        }
+
+        result["outboundTag"] = OutboundTag(rule.Outbound);
+        return result;
+    }
+
+    private static string OutboundTag(RouteOutbound outbound) => outbound switch
+    {
+        RouteOutbound.Direct => DirectTag,
+        RouteOutbound.Block => BlockTag,
+        _ => ProxyTag,
+    };
+
+    /// <summary>A rule whose domains always decide the outbound (no extra port/network/... conditions).</summary>
+    private static bool IsUnconditional(RoutingRule rule) =>
+        string.IsNullOrEmpty(rule.Port) && string.IsNullOrEmpty(rule.Network) && rule.Protocol.Count == 0 && rule.Process.Count == 0;
+
+    /// <summary>Matchers understood by the DNS <c>domains</c> list (same syntax as routing).</summary>
+    private static bool IsDnsDomainMatcher(string domain) => !domain.StartsWith("geosite:private", StringComparison.Ordinal);
+
+    private static JsonArray StringArray(IEnumerable<string> values) => new([.. values.Select(v => (JsonNode)v)]);
 
     private static JsonObject Inbound(string tag, string protocol, int port, JsonObject settings) => new()
     {

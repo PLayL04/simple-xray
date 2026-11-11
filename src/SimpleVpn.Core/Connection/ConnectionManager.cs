@@ -1,13 +1,14 @@
 using Microsoft.Extensions.Logging;
 using SimpleVpn.Core.Abstractions;
 using SimpleVpn.Core.Models;
+using SimpleVpn.Core.Routing;
 using SimpleVpn.Core.Storage;
 using SimpleVpn.Core.Xray;
 
 namespace SimpleVpn.Core.Connection;
 
 /// <summary>
-/// System-proxy connection (M1): generate config → start core → wait until it listens → apply system proxy.
+/// System-proxy connection: generate config → start core → wait until it listens → apply system proxy.
 /// Every failure rolls back what was already applied. The previous system proxy is persisted in
 /// state.json before it is changed, so <see cref="RecoverAfterCrash"/> can restore it after a crash.
 /// </summary>
@@ -15,6 +16,7 @@ public sealed partial class ConnectionManager : IConnectionManager, IDisposable
 {
     private readonly AppPaths _paths;
     private readonly ProfileRepository _profiles;
+    private readonly PresetRepository _presets;
     private readonly SettingsStore _settings;
     private readonly ICoreRunner _core;
     private readonly ISystemProxy _systemProxy;
@@ -28,6 +30,7 @@ public sealed partial class ConnectionManager : IConnectionManager, IDisposable
     public ConnectionManager(
         AppPaths paths,
         ProfileRepository profiles,
+        PresetRepository presets,
         SettingsStore settings,
         ICoreRunner core,
         ISystemProxy systemProxy,
@@ -36,6 +39,7 @@ public sealed partial class ConnectionManager : IConnectionManager, IDisposable
     {
         _paths = paths;
         _profiles = profiles;
+        _presets = presets;
         _settings = settings;
         _core = core;
         _systemProxy = systemProxy;
@@ -121,15 +125,55 @@ public sealed partial class ConnectionManager : IConnectionManager, IDisposable
         }
     }
 
+    /// <summary>
+    /// Applies a new server, preset or settings while connected: restarts the core with a fresh config and keeps
+    /// the system proxy in place (the UI shows "Connecting", never "Disconnected"). Does nothing when not connected.
+    /// </summary>
     public async Task ReconnectIfConnectedAsync(CancellationToken cancellationToken = default)
     {
-        if (State != ConnectionState.Connected)
+        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
         {
-            return;
-        }
+            if (State != ConnectionState.Connected)
+            {
+                return;
+            }
 
-        await DisconnectAsync(cancellationToken).ConfigureAwait(false);
-        await ConnectAsync(cancellationToken).ConfigureAwait(false);
+            SetState(ConnectionState.Connecting, error: null);
+            LogRestarting(_logger);
+            await Task.Run(
+                async () =>
+                {
+                    _stopping = true;
+                    await _core.StopAsync().ConfigureAwait(false);
+                    await StartCoreAsync(ActivePorts, cancellationToken).ConfigureAwait(false);
+                },
+                cancellationToken).ConfigureAwait(false);
+            SetState(ConnectionState.Connected, error: null);
+        }
+        catch (ConnectionFailedException ex)
+        {
+            LogConnectFailed(_logger, ex.Error.Code, ex.Error.Detail);
+            await RollbackAsync().ConfigureAwait(false);
+            SetState(ConnectionState.Error, ex.Error);
+        }
+        catch (OperationCanceledException)
+        {
+            await RollbackAsync().ConfigureAwait(false);
+            SetState(ConnectionState.Disconnected, error: null);
+        }
+#pragma warning disable CA1031 // Any failure must end in a consistent state, never crash the UI.
+        catch (Exception ex)
+#pragma warning restore CA1031
+        {
+            LogUnexpected(_logger, ex);
+            await RollbackAsync().ConfigureAwait(false);
+            SetState(ConnectionState.Error, new ConnectionError(ConnectionErrorCode.Unexpected, ex.Message));
+        }
+        finally
+        {
+            _gate.Release();
+        }
     }
 
     public void Dispose()
@@ -138,7 +182,14 @@ public sealed partial class ConnectionManager : IConnectionManager, IDisposable
         _gate.Dispose();
     }
 
-    private async Task ConnectCoreAsync(CancellationToken cancellationToken)
+    private Task ConnectCoreAsync(CancellationToken cancellationToken) =>
+        StartCoreAsync(previousPorts: null, cancellationToken);
+
+    /// <summary>
+    /// Writes the config, starts the core, waits until it listens and points the system proxy at it.
+    /// On a restart the previous ports are preferred so the already applied system proxy stays valid.
+    /// </summary>
+    private async Task StartCoreAsync((int Socks, int Http)? previousPorts, CancellationToken cancellationToken)
     {
         var profile = _profiles.Selected ?? throw Fail(ConnectionErrorCode.NoServer);
 
@@ -148,15 +199,24 @@ public sealed partial class ConnectionManager : IConnectionManager, IDisposable
         }
 
         var settings = _settings.Settings;
-        var socksPort = _network.AllocatePort(settings.SocksPort, []);
-        var httpPort = _network.AllocatePort(settings.HttpPort, [socksPort]);
+        var preset = _presets.Selected;
+        var socksPort = _network.AllocatePort(previousPorts?.Socks ?? settings.SocksPort, []);
+        var httpPort = _network.AllocatePort(previousPorts?.Http ?? settings.HttpPort, [socksPort]);
 
         Directory.CreateDirectory(_paths.RuntimeDirectory);
         var configPath = Path.Combine(_paths.RuntimeDirectory, "config.json");
-        var json = XrayConfigBuilder.BuildJson(new XrayConfigRequest { Profile = profile, SocksPort = socksPort, HttpPort = httpPort });
+        var json = XrayConfigBuilder.BuildJson(new XrayConfigRequest
+        {
+            Profile = profile,
+            SocksPort = socksPort,
+            HttpPort = httpPort,
+            Preset = preset,
+            Dns = settings.Dns,
+            LogLevel = settings.CoreLogLevel,
+        });
         await File.WriteAllTextAsync(configPath, json, cancellationToken).ConfigureAwait(false);
 
-        LogStarting(_logger, profile.Network, profile.Security, socksPort, httpPort);
+        LogStarting(_logger, profile.Network, profile.Security, preset.Id, socksPort, httpPort);
         _stopping = false;
         try
         {
@@ -176,7 +236,11 @@ public sealed partial class ConnectionManager : IConnectionManager, IDisposable
             throw Fail(code, _core.RecentOutput);
         }
 
-        ApplySystemProxy(httpPort);
+        if (previousPorts is null || previousPorts.Value.Http != httpPort)
+        {
+            ApplySystemProxy(httpPort);
+        }
+
         ActivePorts = (socksPort, httpPort);
     }
 
@@ -184,10 +248,13 @@ public sealed partial class ConnectionManager : IConnectionManager, IDisposable
     {
         try
         {
-            var previous = _systemProxy.GetCurrent();
+            // Persist the user's own proxy before changing anything: if we crash after Apply, the next start
+            // restores it. When our proxy is already applied (restart on another port) keep the saved original.
+            if (!_settings.LoadState().ProxyApplied)
+            {
+                _settings.SaveState(new RuntimeState { ProxyApplied = true, PreviousProxy = _systemProxy.GetCurrent() });
+            }
 
-            // Persist before changing anything: if we crash after Apply, the next start restores it.
-            _settings.SaveState(new RuntimeState { ProxyApplied = true, PreviousProxy = previous });
             _systemProxy.Apply(new SystemProxySettings
             {
                 Enabled = true,
@@ -289,8 +356,11 @@ public sealed partial class ConnectionManager : IConnectionManager, IDisposable
     private static ConnectionFailedException Fail(ConnectionErrorCode code, string? detail = null) =>
         new(new ConnectionError(code, detail));
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Starting core: {Network}/{Security}, socks {SocksPort}, http {HttpPort}")]
-    private static partial void LogStarting(ILogger logger, string network, string security, int socksPort, int httpPort);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Starting core: {Network}/{Security}, preset {Preset}, socks {SocksPort}, http {HttpPort}")]
+    private static partial void LogStarting(ILogger logger, string network, string security, string preset, int socksPort, int httpPort);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Restarting core to apply new settings")]
+    private static partial void LogRestarting(ILogger logger);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Connect failed: {Code}. {Detail}")]
     private static partial void LogConnectFailed(ILogger logger, ConnectionErrorCode code, string? detail);

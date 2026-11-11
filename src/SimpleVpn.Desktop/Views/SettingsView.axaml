@@ -1,0 +1,173 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SimpleVpn.App.ViewModels"
+             xmlns:views="using:SimpleVpn.Desktop.Views"
+             xmlns:loc="using:SimpleVpn.App.Localization"
+             x:Class="SimpleVpn.Desktop.Views.SettingsView"
+             x:DataType="vm:SettingsViewModel"
+             Background="{DynamicResource SystemRegionBrush}">
+  <Panel>
+    <!-- Settings list -->
+    <Grid RowDefinitions="Auto,*" IsVisible="{Binding IsBrowsing}">
+      <Grid ColumnDefinitions="Auto,*" Margin="12,12,20,8" ColumnSpacing="8">
+        <Button Content="←" Command="{Binding CloseCommand}" IsCancel="True"
+                ToolTip.Tip="{loc:Loc Common_Back}" AutomationProperties.Name="{loc:Loc Common_Back}" />
+        <TextBlock Grid.Column="1" Text="{loc:Loc Settings_Title}" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" />
+      </Grid>
+
+      <ScrollViewer Grid.Row="1">
+        <StackPanel Spacing="12" Margin="20,4,20,20">
+
+          <!-- Connection method (top of the hierarchy) -->
+          <Border Classes="card">
+            <StackPanel Spacing="6">
+              <TextBlock Classes="section" Text="{loc:Loc Settings_ModeSection}" />
+              <RadioButton GroupName="mode" IsChecked="True">
+                <StackPanel>
+                  <TextBlock Text="{loc:Loc Mode_SystemProxy}" />
+                  <TextBlock Classes="caption" Text="{loc:Loc Mode_SystemProxyHint}" TextWrapping="Wrap" />
+                </StackPanel>
+              </RadioButton>
+              <RadioButton GroupName="mode" IsEnabled="False">
+                <StackPanel>
+                  <TextBlock Text="{loc:Loc Mode_Tun}" />
+                  <TextBlock Classes="caption" Text="{loc:Loc Mode_TunHint}" TextWrapping="Wrap" />
+                </StackPanel>
+              </RadioButton>
+            </StackPanel>
+          </Border>
+
+          <!-- Routing presets -->
+          <Border Classes="card">
+            <StackPanel Spacing="8">
+              <TextBlock Classes="section" Text="{loc:Loc Settings_RoutingSection}" />
+              <TextBlock Classes="caption" Text="{loc:Loc Settings_RoutingHint}" TextWrapping="Wrap" />
+
+              <ListBox ItemsSource="{Binding Presets}" SelectedItem="{Binding SelectedPreset}"
+                       AutomationProperties.Name="{loc:Loc Settings_RoutingSection}"
+                       Background="Transparent">
+                <ListBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:PresetItem">
+                    <Grid ColumnDefinitions="*,Auto">
+                      <StackPanel>
+                        <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Classes="caption" Text="{Binding Description}" TextTrimming="CharacterEllipsis" />
+                      </StackPanel>
+                      <Border Grid.Column="1" Classes="badge" IsVisible="{Binding IsActive}" VerticalAlignment="Center">
+                        <TextBlock Text="{loc:Loc Presets_Active}" FontSize="11" />
+                      </Border>
+                    </Grid>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+
+              <WrapPanel ItemSpacing="6" LineSpacing="6">
+                <Button Content="{loc:Loc Presets_Activate}" Command="{Binding ActivateCommand}" Classes="accent" />
+                <Button Content="{loc:Loc Presets_View}" Command="{Binding EditCommand}" />
+                <Button Content="{loc:Loc Presets_Duplicate}" Command="{Binding DuplicateCommand}" />
+                <Button Content="{loc:Loc Presets_Delete}" Command="{Binding DeleteCommand}" />
+              </WrapPanel>
+              <WrapPanel ItemSpacing="6" LineSpacing="6">
+                <Button Content="{loc:Loc Presets_ImportFile}" Command="{Binding ImportFileCommand}" />
+                <Button Content="{loc:Loc Presets_ImportUrl}" Command="{Binding ShowImportUrlCommand}" />
+                <Button Content="{loc:Loc Presets_Export}" Command="{Binding ExportCommand}" />
+                <Button Content="{loc:Loc Presets_UpdateFromSource}" Command="{Binding UpdateFromSourceCommand}"
+                        IsVisible="{Binding HasSource}" />
+              </WrapPanel>
+
+              <Border Classes="inset" IsVisible="{Binding IsConfirmingDelete}">
+                <StackPanel Spacing="8">
+                  <TextBlock Text="{loc:Loc Presets_ConfirmDelete}" TextWrapping="Wrap" />
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Button Content="{loc:Loc Presets_Delete}" Command="{Binding ConfirmDeleteCommand}" Classes="danger" />
+                    <Button Content="{loc:Loc Common_Cancel}" Command="{Binding CancelDeleteCommand}" />
+                  </StackPanel>
+                </StackPanel>
+              </Border>
+
+              <Border Classes="inset" IsVisible="{Binding IsImportingUrl}">
+                <StackPanel Spacing="8">
+                  <TextBox Text="{Binding ImportUrl}" PlaceholderText="https://…"
+                           AutomationProperties.Name="{loc:Loc Presets_ImportUrl}"
+                           AutomationProperties.AutomationId="PresetUrlInput" />
+                  <TextBlock Classes="caption" Text="{loc:Loc Presets_ImportUrlHint}" TextWrapping="Wrap" />
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Button Content="{loc:Loc Presets_Import}" Command="{Binding ImportUrlCommand}" Classes="accent" />
+                    <Button Content="{loc:Loc Common_Cancel}" Command="{Binding CancelImportUrlCommand}" />
+                  </StackPanel>
+                </StackPanel>
+              </Border>
+
+              <TextBlock Text="{Binding PresetMessage}" TextWrapping="Wrap"
+                         IsVisible="{Binding PresetMessage, Converter={x:Static ObjectConverters.IsNotNull}}"
+                         Classes.error="{Binding IsPresetMessageError}"
+                         AutomationProperties.AutomationId="PresetMessage" />
+            </StackPanel>
+          </Border>
+
+          <!-- General -->
+          <Border Classes="card">
+            <StackPanel Spacing="6">
+              <TextBlock Classes="section" Text="{loc:Loc Settings_GeneralSection}" />
+              <TextBlock Classes="caption" Text="{loc:Loc Settings_Language}" />
+              <ComboBox SelectedIndex="{Binding LanguageIndex}" HorizontalAlignment="Stretch"
+                        AutomationProperties.Name="{loc:Loc Settings_Language}">
+                <ComboBoxItem Content="{loc:Loc Language_System}" />
+                <ComboBoxItem Content="{loc:Loc Language_Ru}" />
+                <ComboBoxItem Content="{loc:Loc Language_En}" />
+              </ComboBox>
+              <TextBlock Classes="caption" Text="{loc:Loc Settings_LanguageRestart}" IsVisible="{Binding IsLanguageChanged}" TextWrapping="Wrap" />
+            </StackPanel>
+          </Border>
+
+          <!-- Advanced -->
+          <Expander Header="{loc:Loc Settings_AdvancedSection}" HorizontalAlignment="Stretch">
+            <StackPanel Spacing="6">
+              <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                <StackPanel Spacing="4">
+                  <TextBlock Classes="caption" Text="{loc:Loc Settings_SocksPort}" />
+                  <NumericUpDown Value="{Binding SocksPort}" Minimum="1024" Maximum="65535" Increment="1" FormatString="0"
+                                 AutomationProperties.Name="{loc:Loc Settings_SocksPort}" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Spacing="4">
+                  <TextBlock Classes="caption" Text="{loc:Loc Settings_HttpPort}" />
+                  <NumericUpDown Value="{Binding HttpPort}" Minimum="1024" Maximum="65535" Increment="1" FormatString="0"
+                                 AutomationProperties.Name="{loc:Loc Settings_HttpPort}" />
+                </StackPanel>
+              </Grid>
+              <TextBlock Classes="caption" Text="{loc:Loc Settings_RemoteDns}" />
+              <TextBox Text="{Binding RemoteDns}" AutomationProperties.Name="{loc:Loc Settings_RemoteDns}" />
+              <TextBlock Classes="caption" Text="{loc:Loc Settings_DirectDns}" TextWrapping="Wrap" />
+              <TextBox Text="{Binding DirectDns}" AutomationProperties.Name="{loc:Loc Settings_DirectDns}" />
+              <CheckBox IsChecked="{Binding PreferIPv4}" Content="{loc:Loc Settings_PreferIPv4}" />
+              <TextBlock Classes="caption" Text="{loc:Loc Settings_LogLevel}" />
+              <ComboBox SelectedIndex="{Binding LogLevelIndex}" HorizontalAlignment="Stretch"
+                        AutomationProperties.Name="{loc:Loc Settings_LogLevel}">
+                <ComboBoxItem Content="debug" />
+                <ComboBoxItem Content="info" />
+                <ComboBoxItem Content="warning" />
+                <ComboBoxItem Content="error" />
+                <ComboBoxItem Content="none" />
+              </ComboBox>
+              <TextBlock Text="{Binding AdvancedMessage}" TextWrapping="Wrap"
+                         IsVisible="{Binding AdvancedMessage, Converter={x:Static ObjectConverters.IsNotNull}}"
+                         Classes.error="{Binding IsAdvancedMessageError}" />
+              <WrapPanel ItemSpacing="6" LineSpacing="6">
+                <Button Content="{loc:Loc Settings_Apply}" Command="{Binding ApplyAdvancedCommand}" Classes="accent" />
+                <Button Content="{loc:Loc Settings_Reset}" Command="{Binding ResetAdvancedCommand}" />
+                <Button Content="{loc:Loc Settings_OpenLogs}" Command="{Binding OpenLogsCommand}" />
+              </WrapPanel>
+            </StackPanel>
+          </Expander>
+
+          <TextBlock Classes="caption" Text="{x:Static vm:SettingsViewModel.VersionText}" HorizontalAlignment="Center" />
+        </StackPanel>
+      </ScrollViewer>
+    </Grid>
+
+    <!-- Preset editor (sub-page) -->
+    <Panel IsVisible="{Binding IsEditing}">
+      <views:PresetEditorView DataContext="{Binding Editor}" />
+    </Panel>
+  </Panel>
+</UserControl>

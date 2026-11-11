@@ -3,6 +3,7 @@ using SimpleVpn.Core.Abstractions;
 using SimpleVpn.Core.Connection;
 using SimpleVpn.Core.Models;
 using SimpleVpn.Core.Parsing;
+using SimpleVpn.Core.Routing;
 using SimpleVpn.Core.Storage;
 
 namespace SimpleVpn.Core.Tests.Connection;
@@ -15,6 +16,7 @@ public sealed class ConnectionManagerTests : IDisposable
     private readonly AppPaths _paths;
     private readonly ProfileRepository _profiles;
     private readonly SettingsStore _settings;
+    private readonly PresetRepository _presets;
     private readonly FakeCore _core = new();
     private readonly FakeSystemProxy _proxy = new() { Current = UserProxy };
     private readonly FakeNetwork _network = new();
@@ -31,12 +33,13 @@ public sealed class ConnectionManagerTests : IDisposable
 
         _profiles = new ProfileRepository(_paths);
         _settings = new SettingsStore(_paths);
+        _presets = new PresetRepository(_paths, _settings, NullLogger<PresetRepository>.Instance);
     }
 
     public void Dispose() => _root.Delete(recursive: true);
 
     private ConnectionManager CreateManager() =>
-        new(_paths, _profiles, _settings, _core, _proxy, _network, NullLogger<ConnectionManager>.Instance)
+        new(_paths, _profiles, _presets, _settings, _core, _proxy, _network, NullLogger<ConnectionManager>.Instance)
         {
             StartTimeout = TimeSpan.FromMilliseconds(200),
         };
@@ -236,6 +239,72 @@ public sealed class ConnectionManagerTests : IDisposable
         var config = await File.ReadAllTextAsync(Path.Combine(_paths.RuntimeDirectory, "config.json"), TestContext.Current.CancellationToken);
         Assert.Contains("realitySettings", config, StringComparison.Ordinal);
         Assert.Equal(UserProxy, _settings.LoadState().PreviousProxy);
+    }
+
+    [Fact]
+    public async Task ReconnectIfConnected_KeepsSystemProxyAndNeverReportsDisconnected()
+    {
+        AddServer();
+        using var manager = CreateManager();
+        await manager.ConnectAsync(TestContext.Current.CancellationToken);
+        var states = new List<ConnectionState>();
+        manager.StateChanged += (_, s) => states.Add(s);
+
+        _presets.Select(BuiltInPresets.BlockedOnlyId);
+        await manager.ReconnectIfConnectedAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal([ConnectionState.Connecting, ConnectionState.Connected], states);
+        Assert.Equal(1, _proxy.ApplyCalls);
+        Assert.Equal("127.0.0.1:10889", _proxy.Current.Server);
+        var config = await File.ReadAllTextAsync(Path.Combine(_paths.RuntimeDirectory, "config.json"), TestContext.Current.CancellationToken);
+        Assert.Contains("geosite:ru-blocked", config, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ReconnectIfConnected_HttpPortTaken_ReappliesProxyButKeepsOriginalSnapshot()
+    {
+        AddServer();
+        using var manager = CreateManager();
+        await manager.ConnectAsync(TestContext.Current.CancellationToken);
+
+        _network.PortOverride = p => p == 10889 ? 20889 : p;
+        await manager.ReconnectIfConnectedAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal("127.0.0.1:20889", _proxy.Current.Server);
+        Assert.Equal(UserProxy, _settings.LoadState().PreviousProxy);
+
+        await manager.DisconnectAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(UserProxy, _proxy.Current);
+    }
+
+    [Fact]
+    public async Task ReconnectIfConnected_CoreFailsToRestart_RollsBackToUserProxy()
+    {
+        AddServer();
+        using var manager = CreateManager();
+        await manager.ConnectAsync(TestContext.Current.CancellationToken);
+
+        _network.Ready = false;
+        await manager.ReconnectIfConnectedAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(ConnectionState.Error, manager.State);
+        Assert.Equal(UserProxy, _proxy.Current);
+        Assert.False(_core.IsRunning);
+        Assert.False(_settings.LoadState().ProxyApplied);
+    }
+
+    [Fact]
+    public async Task Connect_UsesSelectedPresetAndDnsSettings()
+    {
+        AddServer();
+        _settings.Update(s => s with { SelectedPresetId = BuiltInPresets.BypassRuId, Dns = s.Dns with { PreferIPv4 = false } });
+        using var manager = CreateManager();
+
+        await manager.ConnectAsync(TestContext.Current.CancellationToken);
+
+        var config = await File.ReadAllTextAsync(Path.Combine(_paths.RuntimeDirectory, "config.json"), TestContext.Current.CancellationToken);
+        Assert.Contains("geoip:ru", config, StringComparison.Ordinal);
+        Assert.Contains("\"UseIP\"", config, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "blocked-only",
+  "name": "Blocked only",
+  "names": { "ru": "Только заблокированное", "en": "Blocked only" },
+  "domainStrategy": "IPIfNonMatch",
+  "rules": [
+    { "name": "Local network", "domain": ["geosite:private"], "ip": ["geoip:private"], "outbound": "direct" },
+    { "name": "Russian services that only work from Russia", "domain": ["geosite:ru-available-only-inside"], "outbound": "direct" },
+    { "name": "Blocked or throttled in Russia", "domain": ["geosite:ru-blocked"], "ip": ["geoip:ru-blocked"], "outbound": "proxy" },
+    { "name": "Telegram", "ip": ["geoip:telegram"], "outbound": "proxy" }
+  ],
+  "defaultOutbound": "direct"
+}

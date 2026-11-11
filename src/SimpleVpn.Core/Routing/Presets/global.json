@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "id": "global",
+  "name": "Everything via proxy",
+  "names": { "ru": "Всё через прокси", "en": "Everything via proxy" },
+  "domainStrategy": "AsIs",
+  "rules": [
+    { "name": "Local network", "domain": ["geosite:private"], "ip": ["geoip:private"], "outbound": "direct" }
+  ],
+  "defaultOutbound": "proxy"
+}

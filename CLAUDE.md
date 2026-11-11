@@ -10,7 +10,14 @@
 
 Полная концепция, обоснование стека и дорожная карта: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). **Прочитай его перед любой существенной задачей** и обнови, если решение меняется.
 
-Текущий статус: **M1 (подключение) готов** — импорт `vless://`, хранение профилей, генерация конфига Xray, запуск `xray.exe`, системный прокси с откатом и восстановлением после сбоя, выбор/добавление/удаление сервера в UI. Маршрутизация пока фиксированная: всё через прокси, кроме приватных сетей. Следующий этап — M2 (пресеты маршрутизации, DNS, экран настроек).
+Текущий статус: **M2 (маршрутизация) готов** поверх M1 (подключение через системный прокси с откатом и восстановлением после сбоя). Сделано:
+- три встроенных пресета: «Всё через прокси», «Всё, кроме RU» (по умолчанию) и «Только заблокированное»;
+- свои пресеты: дублирование, редактор (форма и JSON), импорт и экспорт (файл, URL), обновление с источника;
+- DNS: удалённый через прокси, прямой — системный;
+- экран настроек, переключатель пресета на главном экране;
+- смена сервера, пресета или настроек на лету: перезапускается только ядро, прокси остаётся.
+
+Следующий этап — M3 (автообновление geo-баз).
 
 ## Стек
 
@@ -26,21 +33,25 @@
 
 ```
 src/SimpleVpn.Core      net10.0, без UI и без Windows API, TreatWarningsAsErrors:
-  Models/               ServerProfile, AppSettings, SystemProxySettings, RuntimeState, ProfilesDocument
+  Models/               ServerProfile, AppSettings (+ DnsSettings, ConnectionMode), SystemProxySettings, RuntimeState, ProfilesDocument
+  Routing/              RoutingPreset/RoutingRule, BuiltInPresets (Presets/*.json — встроенные ресурсы), PresetRepository,
+                        PresetValidator, PresetSerializer, PresetException + PresetError
+  Net/                  HttpDownloader (напрямую, при ошибке — через запущенное ядро)
   Parsing/              VlessLinkParser (vless:// ⇄ ServerProfile), LinkParseException + LinkParseError
   Xray/                 XrayConfigBuilder — единственное место, где рождается JSON конфига Xray
   Storage/              AppPaths, ProfileRepository, SettingsStore (settings.json + state.json), GeoFiles,
                         JsonFile (атомарная запись), CoreJsonContext (source-gen)
   Connection/           ConnectionManager (+ IConnectionManager, ConnectionError/Code), LoopbackNetworkProbe
   Abstractions/         ICoreRunner, ISystemProxy, INetworkProbe — реализуются платформой
-src/SimpleVpn.App       Avalonia-библиотека без Application: ViewModels, Services (IClipboardService,
-                        IUiDispatcher), Styles/Theme.axaml, Localization (Strings.resx = RU, Strings.en.resx = EN)
+src/SimpleVpn.App       Avalonia-библиотека без Application: ViewModels (Main, Settings, PresetEditor, PresetItem),
+                        Services (IClipboardService, IUiDispatcher, IFileService), Styles/Theme.axaml, Localization (Strings.resx = RU, Strings.en.resx = EN)
 src/SimpleVpn.Desktop   net10.0-windows WinExe (SimpleVpn.exe): Program (DI, восстановление после сбоя),
-                        App.axaml (отключение при выходе), Views, Platform/: XrayProcessRunner + JobObject,
+                        App.axaml (отключение при выходе), Views (MainView, SettingsView, PresetEditorView), Platform/: XrayProcessRunner + JobObject,
                         WinInetSystemProxy, FileLoggerProvider, WindowsAppPaths
 src/SimpleVpn.Android   (позже — свой Application и свои View поверх SimpleVpn.App)
-tests/SimpleVpn.Core.Tests  парсер, генератор (golden-файл + проверка настоящим `xray run -test`), ConnectionManager на фейках, хранилище
-tests/SimpleVpn.App.Tests   локализация (паритет RU/EN, тексты для всех кодов ошибок), MainViewModel
+tests/SimpleVpn.Core.Tests  парсер, генератор (golden-файлы + все встроенные пресеты через настоящий `xray run -test`),
+                            пресеты (валидация, хранилище), ConnectionManager на фейках, хранилище
+tests/SimpleVpn.App.Tests   локализация (паритет RU/EN, тексты для всех кодов ошибок), MainViewModel, SettingsViewModel + редактор
 tools/fetch-xray.ps1    скачивает xray.exe, wintun.dll (с проверкой .dgst) и geo-файлы runetfreedom (с проверкой sha256) в assets/
 assets/                 результат fetch-xray (в .gitignore); Desktop копирует его в core/ и geo/ рядом с exe
 ```
@@ -66,6 +77,9 @@ CI: `.github/workflows/build.yml` (windows-latest: build → test → fetch-xray
 - Первый `Process.Start` свежего `xray.exe` тоже может занять ~20 с (антивирус). Поэтому `ConnectAsync` выполняет тяжёлую часть в `Task.Run` — не возвращай её в UI-поток.
 - Если ПК заблокирован, захват экрана показывает экран блокировки. Для проверки UI используй `PrintWindow` (флаг 2) для снимка и UI Automation (`InvokePattern`, `ValuePattern`) для нажатий и ввода. Кнопки находятся по `AutomationProperties.Name`, статус и поле ссылки — по `AutomationId` (`StatusText`, `LinkInput`). Для ручных проверок запускай с файлом `portable` рядом с exe, чтобы не трогать `%APPDATA%`, и сохраняй настройки прокси (`reg export "HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings"`) перед подключением.
 - Скрипты PowerShell 5.1 без BOM читаются в ANSI — не пиши в них кириллицу (для UI-проверок запускай приложение с `--lang en`).
+- **System.Text.Json source-gen и `init`:** для `init`-свойств генератор подставляет `default`, если поля нет в JSON, а не значение инициализатора. Поэтому модели, которые сериализуются (`Models/*`, `RoutingPreset`, `RoutingRule`), используют `{ get; set; }`. Не меняй на `init`, иначе старые файлы без новых полей прочитаются с `null` и `0`. Регрессионный тест — `Settings_OldFileWithoutNewFields_GetsDefaults`. Экземпляры не мутируй, изменяй через `with`: встроенные пресеты — общие статические объекты.
+- Avalonia, компилируемые привязки: `IsVisible` и `DataContext` на одном элементе не сочетай — `IsVisible` будет искаться в новом `DataContext`. Оборачивай в `Panel` (см. MainView, SettingsView).
+- Строки `.resx` раньше генерировались скриптом; теперь источник истины — сами `Strings.resx` и `Strings.en.resx`. Новые ключи добавляй в оба файла: тест паритета это проверяет.
 - xunit 4: атрибут отключения параллельности — `[assembly: Xunit.v3.Parallelization(Mode = Xunit.Sdk.ParallelMode.None)]`; пропуск теста — `Assert.SkipUnless(...)`.
 - В Git Bash heredoc с кириллицей и `…` внутри длинной составной команды может сломать разбор — большие файлы пиши инструментом Write.
 
@@ -75,7 +89,7 @@ CI: `.github/workflows/build.yml` (windows-latest: build → test → fetch-xray
 2. **Никогда не оставлять пользователя без интернета.** Системный прокси откатывается при отключении, при падении xray и при следующем старте после сбоя (флаг в `state.json`). Любая ошибка в `ConnectAsync` откатывает уже применённые шаги.
 3. **Одно ядро — Xray.** Конфиг Xray генерируется только в `XrayConfigBuilder` из моделей (профиль + пресет + режим + настройки). Нельзя собирать JSON конфига строками в других местах.
 4. **Версия Xray зафиксирована.** Не обновляй ядро «заодно»: XHTTP-параметры меняются между версиями и должны совпадать с сервером. После любого изменения генератора или версии ядра тест `Build_ProducesConfigAcceptedByXray` прогоняет конфиги через настоящий `xray run -test` и падает на любых «deprecated», кроме предупреждений о самих транспортах WS/gRPC. Пример: `allowInsecure` удалён в Xray 26 (замена — `pcs`/`vcn` = `pinnedPeerCertSha256`/`verifyPeerCertByName`), поэтому флаг из ссылки хранится только для экспорта.
-5. **Пресеты — данные, не код.** Встроенные пресеты лежат в JSON-ресурсах, пользовательские — в `%APPDATA%\SimpleVpn\presets\`. Встроенные неизменяемы, их можно только дублировать.
+5. **Пресеты — данные, не код.** Встроенные пресеты лежат в JSON-ресурсах (`Core/Routing/Presets/*.json`), пользовательские — в `%APPDATA%\SimpleVpn\presets\<id>.json`. Встроенные неизменяемы, их можно только дублировать. Домены и IP внутри правила — ИЛИ (генератор разбивает правило), остальные поля — И. Новая категория geosite/geoip во встроенном пресете проверяется тестом с настоящим xray.
 6. **Geo-обновление безопасно:** условный GET → временный файл → проверка sha256/валидности → атомарная замена с `.bak` → перезапуск ядра, если оно запущено, и откат при неудаче. Сначала прямая загрузка, затем через активный прокси.
 7. **TUN требует прав администратора.** Приложение запускается как `asInvoker` и при необходимости перезапускает себя через `runas` с флагом `--connect`. Не ставь `requireAdministrator` в манифест.
 8. **Секреты и приватность.** UUID/ключи из профилей не должны попадать в логи, исключения и диагностику. Access-лог Xray выключен (`"access": "none"`), иначе в наш лог (`logs\simplevpn.log`) пишется история посещённых сайтов.
@@ -95,6 +109,5 @@ CI: `.github/workflows/build.yml` (windows-latest: build → test → fetch-xray
 
 - Выход из Windows / выключение ПК при подключении: прокси восстановится только при следующем запуске приложения. Обработать завершение сеанса (WM_QUERYENDSESSION) — в M5 вместе с треем и автозапуском.
 - Точные ключи TUN inbound для зафиксированной версии Xray — проверить до M4.
-- Названия категорий geosite/geoip в runetfreedom/russia-v2ray-rules-dat — проверить до M2.
 - Способ встраивания Xray на Android — исследовать до M6.
 - Финальное название приложения.

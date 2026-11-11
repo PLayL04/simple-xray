@@ -11,6 +11,9 @@ public interface IConnectionManager
     /// <summary>Reason of the last failure when <see cref="State"/> is <see cref="ConnectionState.Error"/>.</summary>
     ConnectionError? LastError { get; }
 
+    /// <summary>Local SOCKS/HTTP ports of the running core while connected (e.g. to download through the proxy).</summary>
+    (int Socks, int Http)? ActivePorts { get; }
+
     /// <summary>Raised on any state change. May be raised on a background thread.</summary>
     event EventHandler<ConnectionState>? StateChanged;
 
@@ -19,6 +22,9 @@ public interface IConnectionManager
 
     Task DisconnectAsync(CancellationToken cancellationToken = default);
 
-    /// <summary>Reconnects if currently connected (e.g. after the selected server changed); otherwise does nothing.</summary>
+    /// <summary>
+    /// Applies a changed server, preset or setting if currently connected (restarts the core, keeps the system proxy);
+    /// otherwise does nothing.
+    /// </summary>
     Task ReconnectIfConnectedAsync(CancellationToken cancellationToken = default);
 }

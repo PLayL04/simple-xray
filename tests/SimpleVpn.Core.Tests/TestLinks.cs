@@ -27,5 +27,7 @@ internal static class TestLinks
         "vless://" + Uuid + "@203.0.113.20:443?type=xhttp&security=tls&sni=self.example.com&allowInsecure=1" +
         "&pcs=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855&vcn=self.example.com#pinned";
 
-    public static TheoryData<string> All => [XhttpTls, RealityVision, WsTlsIpv6, GrpcTls, PinnedCert];
+    public static IReadOnlyList<string> AllLinks { get; } = [XhttpTls, RealityVision, WsTlsIpv6, GrpcTls, PinnedCert];
+
+    public static TheoryData<string> All => [.. AllLinks];
 }

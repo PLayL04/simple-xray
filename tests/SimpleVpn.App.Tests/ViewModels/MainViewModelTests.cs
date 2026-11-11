@@ -2,7 +2,10 @@ using System.Globalization;
 using SimpleVpn.App.Localization;
 using SimpleVpn.App.Services;
 using SimpleVpn.App.ViewModels;
+using Microsoft.Extensions.Logging.Abstractions;
 using SimpleVpn.Core.Connection;
+using SimpleVpn.Core.Net;
+using SimpleVpn.Core.Routing;
 using SimpleVpn.Core.Storage;
 
 namespace SimpleVpn.App.Tests.ViewModels;
@@ -16,23 +19,29 @@ public sealed class MainViewModelTests : IDisposable
         "vless://0b5c2a8e-6f1d-4c3a-9e2b-7d4f8a1c3e5b@203.0.113.10:443?type=tcp&security=reality&pbk=Z84J2IelR9ch3k8VtlVhhs5ycBUlXA7wHBWcBrjqnAw#DE";
 
     private readonly DirectoryInfo _root = Directory.CreateTempSubdirectory("simplevpn-vm-");
+    private readonly AppPaths _paths;
     private readonly ProfileRepository _profiles;
+    private readonly SettingsStore _settings;
+    private readonly PresetRepository _presets;
     private readonly FakeConnectionManager _connection = new();
     private readonly FakeClipboard _clipboard = new();
 
     public MainViewModelTests()
     {
         Loc.SetCulture(CultureInfo.GetCultureInfo("ru"));
-        _profiles = new ProfileRepository(AppPaths.Resolve(_root.FullName, _root.FullName, _root.FullName, _ => false));
+        _paths = AppPaths.Resolve(_root.FullName, _root.FullName, _root.FullName, _ => false);
+        _profiles = new ProfileRepository(_paths);
+        _settings = new SettingsStore(_paths);
+        _presets = new PresetRepository(_paths, _settings, NullLogger<PresetRepository>.Instance);
     }
 
     public void Dispose() => _root.Delete(recursive: true);
 
-    private MainViewModel CreateViewModel() => new(_connection, _profiles, _clipboard, new InlineDispatcher());
-
-    private sealed class InlineDispatcher : IUiDispatcher
+    private MainViewModel CreateViewModel()
     {
-        public void Post(Action action) => action();
+        var dispatcher = new InlineDispatcher();
+        var settings = new SettingsViewModel(_presets, _settings, _connection, new HttpDownloader(_connection), new FakeFiles(), dispatcher, _paths);
+        return new(_connection, _profiles, _presets, _clipboard, dispatcher, settings);
     }
 
     [Fact]
@@ -155,51 +164,51 @@ public sealed class MainViewModelTests : IDisposable
         Assert.StartsWith("Ядро Xray остановилось", vm.StatusText, StringComparison.Ordinal);
     }
 
-    private sealed class FakeClipboard : IClipboardService
+    [Fact]
+    public void Presets_ShowBuiltInsWithDefaultSelected()
     {
-        public string? Text { get; set; }
+        using var vm = CreateViewModel();
 
-        public Task<string?> GetTextAsync() => Task.FromResult(Text);
+        Assert.Equal(["Всё через прокси", "Всё, кроме RU", "Только заблокированное"], vm.Presets.Select(p => p.Name));
+        Assert.Equal(BuiltInPresets.BypassRuId, vm.SelectedPreset?.Id);
     }
 
-    private sealed class FakeConnectionManager : IConnectionManager
+    [Fact]
+    public async Task SwitchingPreset_SavesSelectionAndReconnects()
     {
-        public ConnectionState State { get; private set; }
+        using var vm = CreateViewModel();
 
-        public ConnectionError? LastError { get; set; }
+        vm.SelectedPreset = vm.Presets.First(p => p.Id == BuiltInPresets.GlobalId);
+        await Task.Yield();
 
-        public int ConnectCalls { get; private set; }
+        Assert.Equal(BuiltInPresets.GlobalId, _presets.Selected.Id);
+        Assert.Equal(BuiltInPresets.GlobalId, new SettingsStore(_paths).Settings.SelectedPresetId);
+        Assert.Equal(1, _connection.ReconnectCalls);
+        Assert.Equal(BuiltInPresets.GlobalId, vm.SelectedPreset?.Id);
+    }
 
-        public int DisconnectCalls { get; private set; }
+    [Fact]
+    public void PresetChangedInSettings_IsReflectedOnMainScreen()
+    {
+        using var vm = CreateViewModel();
+        vm.OpenSettingsCommand.Execute(null);
 
-        public int ReconnectCalls { get; private set; }
+        vm.Settings.SelectedPreset = vm.Settings.Presets.First(p => p.Id == BuiltInPresets.BlockedOnlyId);
+        vm.Settings.ActivateCommand.Execute(null);
 
-        public event EventHandler<ConnectionState>? StateChanged;
+        Assert.Equal(BuiltInPresets.BlockedOnlyId, vm.SelectedPreset?.Id);
+        Assert.True(vm.Settings.Presets.Single(p => p.Id == BuiltInPresets.BlockedOnlyId).IsActive);
+    }
 
-        public Task ConnectAsync(CancellationToken cancellationToken = default)
-        {
-            ConnectCalls++;
-            Raise(ConnectionState.Connected);
-            return Task.CompletedTask;
-        }
+    [Fact]
+    public void Settings_OpenAndBack()
+    {
+        using var vm = CreateViewModel();
 
-        public Task DisconnectAsync(CancellationToken cancellationToken = default)
-        {
-            DisconnectCalls++;
-            Raise(ConnectionState.Disconnected);
-            return Task.CompletedTask;
-        }
+        vm.OpenSettingsCommand.Execute(null);
+        Assert.True(vm.IsSettingsOpen);
 
-        public Task ReconnectIfConnectedAsync(CancellationToken cancellationToken = default)
-        {
-            ReconnectCalls++;
-            return Task.CompletedTask;
-        }
-
-        public void Raise(ConnectionState state)
-        {
-            State = state;
-            StateChanged?.Invoke(this, state);
-        }
+        vm.Settings.CloseCommand.Execute(null);
+        Assert.False(vm.IsSettingsOpen);
     }
 }

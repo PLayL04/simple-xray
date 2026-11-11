@@ -18,8 +18,6 @@
   <data name="Server_None" xml:space="preserve"><value>Not added</value></data>
   <data name="Server_Add" xml:space="preserve"><value>Add server</value></data>
   <data name="Server_Remove" xml:space="preserve"><value>Remove server</value></data>
-  <data name="Preset_Global" xml:space="preserve"><value>Everything via proxy</value></data>
-  <data name="Preset_BypassRu" xml:space="preserve"><value>All except RU</value></data>
   <data name="AddServer_Title" xml:space="preserve"><value>New server</value></data>
   <data name="AddServer_Hint" xml:space="preserve"><value>Paste the vless:// link you got from the server administrator.</value></data>
   <data name="AddServer_Paste" xml:space="preserve"><value>Paste from clipboard</value></data>
@@ -40,4 +38,103 @@
   <data name="LinkError_MissingAddress" xml:space="preserve"><value>The link has no server address</value></data>
   <data name="LinkError_InvalidPort" xml:space="preserve"><value>Invalid server port in the link</value></data>
   <data name="LinkError_InvalidParameter" xml:space="preserve"><value>The link contains unsupported parameters</value></data>
+  <data name="Settings_Title" xml:space="preserve"><value>Settings</value></data>
+  <data name="Common_Back" xml:space="preserve"><value>Back</value></data>
+  <data name="Common_Save" xml:space="preserve"><value>Save</value></data>
+  <data name="Settings_ModeSection" xml:space="preserve"><value>Connection method</value></data>
+  <data name="Mode_SystemProxy" xml:space="preserve"><value>System proxy</value></data>
+  <data name="Mode_SystemProxyHint" xml:space="preserve"><value>Browsers and most apps. No administrator rights needed.</value></data>
+  <data name="Mode_Tun" xml:space="preserve"><value>VPN (TUN)</value></data>
+  <data name="Mode_TunHint" xml:space="preserve"><value>All system traffic, requires administrator rights. Coming in a future version.</value></data>
+  <data name="Settings_RoutingSection" xml:space="preserve"><value>Routing</value></data>
+  <data name="Settings_RoutingHint" xml:space="preserve"><value>Which traffic goes through the proxy. The active preset can also be switched on the main screen.</value></data>
+  <data name="Presets_Active" xml:space="preserve"><value>active</value></data>
+  <data name="Presets_BuiltIn" xml:space="preserve"><value>Built-in</value></data>
+  <data name="Presets_Custom" xml:space="preserve"><value>Custom</value></data>
+  <data name="Presets_FromSource" xml:space="preserve"><value>Downloaded from {0}</value></data>
+  <data name="Presets_Activate" xml:space="preserve"><value>Use</value></data>
+  <data name="Presets_View" xml:space="preserve"><value>Rules</value></data>
+  <data name="Presets_Duplicate" xml:space="preserve"><value>Duplicate</value></data>
+  <data name="Presets_Delete" xml:space="preserve"><value>Delete</value></data>
+  <data name="Presets_ConfirmDelete" xml:space="preserve"><value>Delete the selected preset? This cannot be undone.</value></data>
+  <data name="Presets_Export" xml:space="preserve"><value>Export to file</value></data>
+  <data name="Presets_ImportFile" xml:space="preserve"><value>Import from file</value></data>
+  <data name="Presets_ImportUrl" xml:space="preserve"><value>Import from URL</value></data>
+  <data name="Presets_ImportUrlHint" xml:space="preserve"><value>Link to a preset JSON file (https://…)</value></data>
+  <data name="Presets_Import" xml:space="preserve"><value>Import</value></data>
+  <data name="Presets_UpdateFromSource" xml:space="preserve"><value>Update from source</value></data>
+  <data name="Presets_CopyName" xml:space="preserve"><value>{0} (copy)</value></data>
+  <data name="Presets_Deleted" xml:space="preserve"><value>Preset “{0}” deleted</value></data>
+  <data name="Presets_Exported" xml:space="preserve"><value>Preset saved to file</value></data>
+  <data name="Presets_Imported" xml:space="preserve"><value>Preset “{0}” added. Click “Use” to switch to it.</value></data>
+  <data name="Presets_Updated" xml:space="preserve"><value>Preset updated</value></data>
+  <data name="Presets_Downloading" xml:space="preserve"><value>Downloading…</value></data>
+  <data name="Presets_FileError" xml:space="preserve"><value>File error</value></data>
+  <data name="PresetError_Malformed" xml:space="preserve"><value>The preset file is damaged or has a wrong format</value></data>
+  <data name="PresetError_TooLarge" xml:space="preserve"><value>The preset file is too large (over 1 MB)</value></data>
+  <data name="PresetError_UnsupportedVersion" xml:space="preserve"><value>The preset was made by a newer app version — update the app</value></data>
+  <data name="PresetError_MissingName" xml:space="preserve"><value>Enter a preset name</value></data>
+  <data name="PresetError_EmptyRule" xml:space="preserve"><value>The rule has no conditions</value></data>
+  <data name="PresetError_InvalidDomain" xml:space="preserve"><value>Invalid domain</value></data>
+  <data name="PresetError_InvalidIp" xml:space="preserve"><value>Invalid IP address or subnet</value></data>
+  <data name="PresetError_InvalidPort" xml:space="preserve"><value>Invalid port</value></data>
+  <data name="PresetError_InvalidNetwork" xml:space="preserve"><value>Invalid network type</value></data>
+  <data name="PresetError_InvalidProtocol" xml:space="preserve"><value>Unknown protocol</value></data>
+  <data name="PresetError_InvalidDomainStrategy" xml:space="preserve"><value>Invalid domain resolution mode</value></data>
+  <data name="PresetError_BuiltInReadOnly" xml:space="preserve"><value>Built-in presets cannot be changed — make a copy</value></data>
+  <data name="PresetError_NotFound" xml:space="preserve"><value>Preset not found</value></data>
+  <data name="PresetError_InvalidUrl" xml:space="preserve"><value>Enter a link like https://…</value></data>
+  <data name="PresetError_DownloadFailed" xml:space="preserve"><value>Failed to download the preset</value></data>
+  <data name="PresetError_InRule" xml:space="preserve"><value>Rule {0}: {1}</value></data>
+  <data name="Editor_Title" xml:space="preserve"><value>Edit preset</value></data>
+  <data name="Editor_TitleView" xml:space="preserve"><value>Built-in preset (read-only)</value></data>
+  <data name="Editor_Name" xml:space="preserve"><value>Name</value></data>
+  <data name="Editor_Default" xml:space="preserve"><value>All other traffic</value></data>
+  <data name="Editor_DomainStrategy" xml:space="preserve"><value>Domain and IP matching</value></data>
+  <data name="Strategy_AsIs" xml:space="preserve"><value>Domains only (AsIs)</value></data>
+  <data name="Strategy_IPIfNonMatch" xml:space="preserve"><value>Domains, then IP (IPIfNonMatch)</value></data>
+  <data name="Strategy_IPOnDemand" xml:space="preserve"><value>Resolve to IP first (IPOnDemand)</value></data>
+  <data name="Editor_Rules" xml:space="preserve"><value>Rules: checked top to bottom, the first match wins</value></data>
+  <data name="Editor_Hint" xml:space="preserve"><value>Within a rule, domains and IPs are alternatives (OR); port, network and protocol narrow the match (AND).</value></data>
+  <data name="Editor_RuleNumber" xml:space="preserve"><value>Rule {0}</value></data>
+  <data name="Editor_RuleName" xml:space="preserve"><value>Comment</value></data>
+  <data name="Editor_RuleEnabled" xml:space="preserve"><value>Enabled</value></data>
+  <data name="Editor_Domains" xml:space="preserve"><value>Domains, one per line (geosite:…, domain:…, full:…)</value></data>
+  <data name="Editor_Ips" xml:space="preserve"><value>IPs and subnets, one per line (geoip:…, 10.0.0.0/8)</value></data>
+  <data name="Editor_Port" xml:space="preserve"><value>Ports (443, 1000-2000)</value></data>
+  <data name="Editor_Network" xml:space="preserve"><value>Network</value></data>
+  <data name="Network_Any" xml:space="preserve"><value>Any</value></data>
+  <data name="Editor_Protocols" xml:space="preserve"><value>Protocols (http, tls, quic, bittorrent)</value></data>
+  <data name="Editor_Target" xml:space="preserve"><value>Send to</value></data>
+  <data name="Outbound_Proxy" xml:space="preserve"><value>Via proxy</value></data>
+  <data name="Outbound_Direct" xml:space="preserve"><value>Direct</value></data>
+  <data name="Outbound_Block" xml:space="preserve"><value>Block</value></data>
+  <data name="Editor_AddRule" xml:space="preserve"><value>Add rule</value></data>
+  <data name="Editor_MoveUp" xml:space="preserve"><value>Move up</value></data>
+  <data name="Editor_MoveDown" xml:space="preserve"><value>Move down</value></data>
+  <data name="Editor_RemoveRule" xml:space="preserve"><value>Remove rule</value></data>
+  <data name="Editor_ShowJson" xml:space="preserve"><value>As JSON</value></data>
+  <data name="Editor_ShowForm" xml:space="preserve"><value>As form</value></data>
+  <data name="Editor_SaveFailed" xml:space="preserve"><value>Failed to save</value></data>
+  <data name="Settings_GeneralSection" xml:space="preserve"><value>General</value></data>
+  <data name="Settings_Language" xml:space="preserve"><value>Interface language</value></data>
+  <data name="Language_System" xml:space="preserve"><value>System default</value></data>
+  <data name="Language_Ru" xml:space="preserve"><value>Русский</value></data>
+  <data name="Language_En" xml:space="preserve"><value>English</value></data>
+  <data name="Settings_LanguageRestart" xml:space="preserve"><value>The language changes after restarting the app</value></data>
+  <data name="Settings_AdvancedSection" xml:space="preserve"><value>Advanced</value></data>
+  <data name="Settings_SocksPort" xml:space="preserve"><value>Local SOCKS port</value></data>
+  <data name="Settings_HttpPort" xml:space="preserve"><value>Local HTTP port</value></data>
+  <data name="Settings_RemoteDns" xml:space="preserve"><value>DNS via proxy</value></data>
+  <data name="Settings_DirectDns" xml:space="preserve"><value>DNS for direct connections (localhost = system)</value></data>
+  <data name="Settings_PreferIPv4" xml:space="preserve"><value>IPv4 only</value></data>
+  <data name="Settings_LogLevel" xml:space="preserve"><value>Core log level</value></data>
+  <data name="Settings_Apply" xml:space="preserve"><value>Apply</value></data>
+  <data name="Settings_Reset" xml:space="preserve"><value>Defaults</value></data>
+  <data name="Settings_Applied" xml:space="preserve"><value>Saved. New ports take effect from the next connection.</value></data>
+  <data name="Settings_InvalidPorts" xml:space="preserve"><value>Ports must differ and be between 1024 and 65535</value></data>
+  <data name="Settings_InvalidRemoteDns" xml:space="preserve"><value>Enter a DNS server address</value></data>
+  <data name="Settings_InvalidDirectDns" xml:space="preserve"><value>Enter localhost or an IP address</value></data>
+  <data name="Settings_OpenLogs" xml:space="preserve"><value>Open log folder</value></data>
+  <data name="Settings_About" xml:space="preserve"><value>SimpleVpn, version {0}</value></data>
 </root>

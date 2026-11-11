@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "bypass-ru",
+  "name": "All except RU",
+  "names": { "ru": "Всё, кроме RU", "en": "All except RU" },
+  "domainStrategy": "IPIfNonMatch",
+  "rules": [
+    { "name": "Local network", "domain": ["geosite:private"], "ip": ["geoip:private"], "outbound": "direct" },
+    { "name": "Russian services that only work from Russia", "domain": ["geosite:ru-available-only-inside"], "outbound": "direct" },
+    { "name": "Blocked in Russia (even on .ru)", "domain": ["geosite:ru-blocked"], "outbound": "proxy" },
+    { "name": "Russian sites", "domain": ["geosite:category-ru"], "outbound": "direct" },
+    { "name": "Blocked IP ranges", "ip": ["geoip:ru-blocked"], "outbound": "proxy" },
+    { "name": "Russian IP ranges", "ip": ["geoip:ru"], "outbound": "direct" }
+  ],
+  "defaultOutbound": "proxy"
+}

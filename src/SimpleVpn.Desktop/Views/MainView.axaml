@@ -3,6 +3,7 @@
              xmlns:vm="using:SimpleVpn.App.ViewModels"
              xmlns:models="using:SimpleVpn.Core.Models"
              xmlns:loc="using:SimpleVpn.App.Localization"
+             xmlns:views="using:SimpleVpn.Desktop.Views"
              x:Class="SimpleVpn.Desktop.Views.MainView"
              x:DataType="vm:MainViewModel">
   <Panel>
@@ -11,8 +12,8 @@
       <!-- Header -->
       <Grid ColumnDefinitions="*,Auto">
         <TextBlock Text="{loc:Loc AppTitle}" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" />
-        <!-- TODO(M2): open settings -->
-        <Button Grid.Column="1" Content="{loc:Loc Action_Settings}" IsEnabled="False" />
+        <Button Grid.Column="1" Content="⚙" FontSize="16" Command="{Binding OpenSettingsCommand}"
+                ToolTip.Tip="{loc:Loc Action_Settings}" AutomationProperties.Name="{loc:Loc Action_Settings}" />
       </Grid>
 
       <!-- Power button and status -->
@@ -71,9 +72,18 @@
           </StackPanel>
         </Border>
         <Border Classes="card">
-          <StackPanel Spacing="2">
+          <StackPanel Spacing="4">
             <TextBlock Classes="caption" Text="{loc:Loc Label_Routing}" />
-            <TextBlock Text="{Binding PresetName}" />
+            <ComboBox ItemsSource="{Binding Presets}"
+                      SelectedItem="{Binding SelectedPreset}"
+                      HorizontalAlignment="Stretch"
+                      AutomationProperties.Name="{loc:Loc Label_Routing}">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:PresetItem">
+                  <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
           </StackPanel>
         </Border>
       </StackPanel>
@@ -103,5 +113,10 @@
         </StackPanel>
       </Border>
     </Border>
+
+    <!-- Settings screen over the main screen -->
+    <Panel IsVisible="{Binding IsSettingsOpen}">
+      <views:SettingsView DataContext="{Binding Settings}" />
+    </Panel>
   </Panel>
 </UserControl>

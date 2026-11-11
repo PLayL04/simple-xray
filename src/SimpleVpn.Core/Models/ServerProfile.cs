@@ -7,76 +7,76 @@ namespace SimpleVpn.Core.Models;
 /// </summary>
 public sealed record ServerProfile
 {
-    public Guid Id { get; init; } = Guid.NewGuid();
+    public Guid Id { get; set; } = Guid.NewGuid();
 
     /// <summary>Display name (link fragment after '#').</summary>
-    public string Name { get; init; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
 
-    public string Protocol { get; init; } = "vless";
+    public string Protocol { get; set; } = "vless";
 
-    public required string Address { get; init; }
+    public required string Address { get; set; }
 
-    public required int Port { get; init; }
+    public required int Port { get; set; }
 
     /// <summary>VLESS user id (UUID). Secret: never log it.</summary>
-    public required string UserId { get; init; }
+    public required string UserId { get; set; }
 
     /// <summary>VLESS encryption, "none" unless the server enables VLESS encryption.</summary>
-    public string Encryption { get; init; } = "none";
+    public string Encryption { get; set; } = "none";
 
     /// <summary>XTLS flow, e.g. "xtls-rprx-vision".</summary>
-    public string? Flow { get; init; }
+    public string? Flow { get; set; }
 
     /// <summary>Transport: tcp/raw, xhttp, ws, grpc, httpupgrade.</summary>
-    public string Network { get; init; } = "tcp";
+    public string Network { get; set; } = "tcp";
 
     /// <summary>none, tls or reality.</summary>
-    public string Security { get; init; } = "none";
+    public string Security { get; set; } = "none";
 
-    public string? Sni { get; init; }
+    public string? Sni { get; set; }
 
     /// <summary>uTLS fingerprint, e.g. "chrome".</summary>
-    public string? Fingerprint { get; init; }
+    public string? Fingerprint { get; set; }
 
-    public IReadOnlyList<string> Alpn { get; init; } = [];
+    public IReadOnlyList<string> Alpn { get; set; } = [];
 
     /// <summary>
     /// Legacy "allowInsecure" link flag. Kept only for export: Xray removed the option
     /// (since 26.x) in favor of <see cref="PinnedPeerCertSha256"/> / <see cref="VerifyPeerCertByName"/>,
     /// so it is never written to the core config and certificates are always verified.
     /// </summary>
-    public bool AllowInsecure { get; init; }
+    public bool AllowInsecure { get; set; }
 
     /// <summary>"pcs": comma-separated SHA-256 hashes of pinned server certificates.</summary>
-    public string? PinnedPeerCertSha256 { get; init; }
+    public string? PinnedPeerCertSha256 { get; set; }
 
     /// <summary>"vcn": name to verify the server certificate against (instead of the SNI).</summary>
-    public string? VerifyPeerCertByName { get; init; }
+    public string? VerifyPeerCertByName { get; set; }
 
     // Reality
-    public string? RealityPublicKey { get; init; }
-    public string? RealityShortId { get; init; }
-    public string? RealitySpiderX { get; init; }
+    public string? RealityPublicKey { get; set; }
+    public string? RealityShortId { get; set; }
+    public string? RealitySpiderX { get; set; }
 
     /// <summary>ML-DSA-65 verification key for Reality ("pqv").</summary>
-    public string? RealityMldsa65Verify { get; init; }
+    public string? RealityMldsa65Verify { get; set; }
 
     // Transport settings
-    public string? Path { get; init; }
-    public string? Host { get; init; }
+    public string? Path { get; set; }
+    public string? Host { get; set; }
 
     /// <summary>XHTTP mode: auto, packet-up, stream-up, stream-one.</summary>
-    public string? XhttpMode { get; init; }
+    public string? XhttpMode { get; set; }
 
     /// <summary>XHTTP "extra" object as raw JSON.</summary>
-    public string? XhttpExtra { get; init; }
+    public string? XhttpExtra { get; set; }
 
-    public string? GrpcServiceName { get; init; }
+    public string? GrpcServiceName { get; set; }
 
-    public string? HeaderType { get; init; }
+    public string? HeaderType { get; set; }
 
     /// <summary>Link parameters this version does not understand, preserved for export.</summary>
-    public IReadOnlyDictionary<string, string> ExtraParameters { get; init; } = new Dictionary<string, string>();
+    public IReadOnlyDictionary<string, string> ExtraParameters { get; set; } = new Dictionary<string, string>();
 
     public string DisplayName => string.IsNullOrWhiteSpace(Name) ? $"{Address}:{Port}" : Name;
 }
