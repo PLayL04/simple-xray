@@ -137,4 +137,36 @@
   <data name="Settings_InvalidDirectDns" xml:space="preserve"><value>Enter localhost or an IP address</value></data>
   <data name="Settings_OpenLogs" xml:space="preserve"><value>Open log folder</value></data>
   <data name="Settings_About" xml:space="preserve"><value>SimpleVpn, version {0}</value></data>
+  <data name="Geo_Section" xml:space="preserve"><value>Geo databases</value></data>
+  <data name="Geo_Hint" xml:space="preserve"><value>Lists of sites and IP addresses (geosite/geoip) that presets rely on.</value></data>
+  <data name="Geo_LastUpdate" xml:space="preserve"><value>Updated: {0}</value></data>
+  <data name="Geo_NeverUpdated" xml:space="preserve"><value>Using the databases shipped with the app</value></data>
+  <data name="Geo_LastCheck" xml:space="preserve"><value>Checked: {0}</value></data>
+  <data name="Geo_Updating" xml:space="preserve"><value>Updating…</value></data>
+  <data name="Geo_UpdatingPercent" xml:space="preserve"><value>Downloading… {0}%</value></data>
+  <data name="Geo_UpdateNow" xml:space="preserve"><value>Update now</value></data>
+  <data name="Geo_UpToDate" xml:space="preserve"><value>Databases are up to date</value></data>
+  <data name="Geo_Updated" xml:space="preserve"><value>Databases updated</value></data>
+  <data name="Geo_AutoUpdate" xml:space="preserve"><value>Update automatically</value></data>
+  <data name="Interval_6" xml:space="preserve"><value>Every 6 hours</value></data>
+  <data name="Interval_12" xml:space="preserve"><value>Every 12 hours</value></data>
+  <data name="Interval_24" xml:space="preserve"><value>Once a day</value></data>
+  <data name="Interval_72" xml:space="preserve"><value>Every 3 days</value></data>
+  <data name="Interval_168" xml:space="preserve"><value>Once a week</value></data>
+  <data name="Geo_Source" xml:space="preserve"><value>Source</value></data>
+  <data name="Geo_SourceDefault" xml:space="preserve"><value>runetfreedom (recommended)</value></data>
+  <data name="Geo_SourceCustom" xml:space="preserve"><value>Custom links</value></data>
+  <data name="Geo_GeoipUrl" xml:space="preserve"><value>Link to geoip.dat</value></data>
+  <data name="Geo_GeositeUrl" xml:space="preserve"><value>Link to geosite.dat</value></data>
+  <data name="Geo_CustomHint" xml:space="preserve"><value>If .sha256sum files are next to them, they are verified. New databases must contain the categories presets use.</value></data>
+  <data name="Geo_SaveSource" xml:space="preserve"><value>Save source</value></data>
+  <data name="Geo_SourceSaved" xml:space="preserve"><value>Source saved. Click “Update now” to download the databases.</value></data>
+  <data name="Geo_InvalidUrls" xml:space="preserve"><value>Enter both links like https://…</value></data>
+  <data name="GeoError_InvalidSource" xml:space="preserve"><value>Custom geo database links are not set</value></data>
+  <data name="GeoError_DownloadFailed" xml:space="preserve"><value>Failed to download the update</value></data>
+  <data name="GeoError_ChecksumMismatch" xml:space="preserve"><value>The file was damaged in transit (checksum mismatch)</value></data>
+  <data name="GeoError_InvalidFile" xml:space="preserve"><value>The downloaded file is not a geo database</value></data>
+  <data name="GeoError_MissingCategory" xml:space="preserve"><value>The new database lacks categories the presets need</value></data>
+  <data name="GeoError_ReplaceFailed" xml:space="preserve"><value>Failed to replace the files on disk</value></data>
+  <data name="GeoError_CoreRejected" xml:space="preserve"><value>The core did not start with the new databases — the previous ones were restored</value></data>
 </root>

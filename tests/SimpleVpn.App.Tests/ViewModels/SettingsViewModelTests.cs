@@ -2,6 +2,7 @@ using System.Globalization;
 using Microsoft.Extensions.Logging.Abstractions;
 using SimpleVpn.App.Localization;
 using SimpleVpn.App.ViewModels;
+using SimpleVpn.Core.Geo;
 using SimpleVpn.Core.Net;
 using SimpleVpn.Core.Routing;
 using SimpleVpn.Core.Storage;
@@ -27,8 +28,13 @@ public sealed class SettingsViewModelTests : IDisposable
 
     public void Dispose() => _root.Delete(recursive: true);
 
+    private GeoSettingsViewModel Geo() => new(
+        new GeoUpdater(_paths, _settings, _presets, _connection, new HttpDownloader(_connection), NullLogger<GeoUpdater>.Instance),
+        _settings,
+        new InlineDispatcher());
+
     private SettingsViewModel Create() =>
-        new(_presets, _settings, _connection, new HttpDownloader(_connection), _files, new InlineDispatcher(), _paths);
+        new(_presets, _settings, _connection, new HttpDownloader(_connection), _files, new InlineDispatcher(), _paths, Geo());
 
     private static void Select(SettingsViewModel vm, string id) => vm.SelectedPreset = vm.Presets.First(p => p.Id == id);
 
@@ -254,5 +260,57 @@ public sealed class SettingsViewModelTests : IDisposable
 
         Assert.Equal("en", new SettingsStore(_paths).Settings.Language);
         Assert.True(vm.IsLanguageChanged);
+    }
+
+    [Fact]
+    public void Geo_IntervalAndAutoUpdateAreSaved()
+    {
+        using var vm = Create();
+        Assert.Equal(2, vm.Geo.IntervalIndex);
+        Assert.Equal(Loc.Get("Geo_NeverUpdated"), vm.Geo.LastUpdateText);
+
+        vm.Geo.IntervalIndex = 4;
+        vm.Geo.AutoUpdate = false;
+
+        var geo = new SettingsStore(_paths).Settings.Geo;
+        Assert.Equal(168, geo.IntervalHours);
+        Assert.False(geo.AutoUpdate);
+    }
+
+    [Fact]
+    public void Geo_CustomSourceRequiresBothUrls()
+    {
+        using var vm = Create();
+        vm.Geo.UseCustomSource = true;
+        vm.Geo.CustomGeoipUrl = "https://example.org/geoip.dat";
+
+        vm.Geo.SaveSourceCommand.Execute(null);
+        Assert.True(vm.Geo.IsSourceMessageError);
+        Assert.False(new SettingsStore(_paths).Settings.Geo.UseCustomSource);
+
+        vm.Geo.CustomGeositeUrl = "https://example.org/geosite.dat";
+        vm.Geo.SaveSourceCommand.Execute(null);
+        Assert.True(new SettingsStore(_paths).Settings.Geo.UseCustomSource);
+
+        vm.Geo.UseDefaultSource = true;
+        var geo = new SettingsStore(_paths).Settings.Geo;
+        Assert.False(geo.UseCustomSource);
+        Assert.Equal("https://example.org/geosite.dat", geo.CustomGeositeUrl);
+    }
+
+    [Fact]
+    public async Task Geo_UpdateFailureShowsLocalizedError()
+    {
+        using var vm = Create();
+        vm.Geo.UseCustomSource = true;
+        vm.Geo.CustomGeoipUrl = "http://127.0.0.1:9/geoip.dat";
+        vm.Geo.CustomGeositeUrl = "http://127.0.0.1:9/geosite.dat";
+        vm.Geo.SaveSourceCommand.Execute(null);
+
+        await vm.Geo.UpdateNowCommand.ExecuteAsync(null);
+
+        Assert.True(vm.Geo.IsError);
+        Assert.StartsWith(Loc.Get("GeoError_DownloadFailed"), vm.Geo.ResultText, StringComparison.Ordinal);
+        Assert.True(vm.Geo.IsIdle);
     }
 }

@@ -4,6 +4,7 @@ using SimpleVpn.App.Services;
 using SimpleVpn.App.ViewModels;
 using Microsoft.Extensions.Logging.Abstractions;
 using SimpleVpn.Core.Connection;
+using SimpleVpn.Core.Geo;
 using SimpleVpn.Core.Net;
 using SimpleVpn.Core.Routing;
 using SimpleVpn.Core.Storage;
@@ -37,10 +38,15 @@ public sealed class MainViewModelTests : IDisposable
 
     public void Dispose() => _root.Delete(recursive: true);
 
+    private GeoSettingsViewModel Geo() => new(
+        new GeoUpdater(_paths, _settings, _presets, _connection, new HttpDownloader(_connection), NullLogger<GeoUpdater>.Instance),
+        _settings,
+        new InlineDispatcher());
+
     private MainViewModel CreateViewModel()
     {
         var dispatcher = new InlineDispatcher();
-        var settings = new SettingsViewModel(_presets, _settings, _connection, new HttpDownloader(_connection), new FakeFiles(), dispatcher, _paths);
+        var settings = new SettingsViewModel(_presets, _settings, _connection, new HttpDownloader(_connection), new FakeFiles(), dispatcher, _paths, Geo());
         return new(_connection, _profiles, _presets, _clipboard, dispatcher, settings);
     }
 

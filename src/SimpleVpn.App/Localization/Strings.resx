@@ -137,4 +137,36 @@
   <data name="Settings_InvalidDirectDns" xml:space="preserve"><value>Укажите localhost или IP-адрес</value></data>
   <data name="Settings_OpenLogs" xml:space="preserve"><value>Открыть папку с логами</value></data>
   <data name="Settings_About" xml:space="preserve"><value>SimpleVpn, версия {0}</value></data>
+  <data name="Geo_Section" xml:space="preserve"><value>Geo-базы</value></data>
+  <data name="Geo_Hint" xml:space="preserve"><value>Списки сайтов и IP-адресов (geosite/geoip), по которым работают пресеты.</value></data>
+  <data name="Geo_LastUpdate" xml:space="preserve"><value>Обновлено: {0}</value></data>
+  <data name="Geo_NeverUpdated" xml:space="preserve"><value>Используются базы из комплекта приложения</value></data>
+  <data name="Geo_LastCheck" xml:space="preserve"><value>Проверено: {0}</value></data>
+  <data name="Geo_Updating" xml:space="preserve"><value>Обновление…</value></data>
+  <data name="Geo_UpdatingPercent" xml:space="preserve"><value>Загрузка… {0}%</value></data>
+  <data name="Geo_UpdateNow" xml:space="preserve"><value>Обновить сейчас</value></data>
+  <data name="Geo_UpToDate" xml:space="preserve"><value>Базы актуальны</value></data>
+  <data name="Geo_Updated" xml:space="preserve"><value>Базы обновлены</value></data>
+  <data name="Geo_AutoUpdate" xml:space="preserve"><value>Обновлять автоматически</value></data>
+  <data name="Interval_6" xml:space="preserve"><value>Каждые 6 часов</value></data>
+  <data name="Interval_12" xml:space="preserve"><value>Каждые 12 часов</value></data>
+  <data name="Interval_24" xml:space="preserve"><value>Раз в день</value></data>
+  <data name="Interval_72" xml:space="preserve"><value>Раз в 3 дня</value></data>
+  <data name="Interval_168" xml:space="preserve"><value>Раз в неделю</value></data>
+  <data name="Geo_Source" xml:space="preserve"><value>Источник</value></data>
+  <data name="Geo_SourceDefault" xml:space="preserve"><value>runetfreedom (рекомендуется)</value></data>
+  <data name="Geo_SourceCustom" xml:space="preserve"><value>Свои ссылки</value></data>
+  <data name="Geo_GeoipUrl" xml:space="preserve"><value>Ссылка на geoip.dat</value></data>
+  <data name="Geo_GeositeUrl" xml:space="preserve"><value>Ссылка на geosite.dat</value></data>
+  <data name="Geo_CustomHint" xml:space="preserve"><value>Если рядом лежат файлы .sha256sum, они будут проверены. Новые базы должны содержать категории, которые используют пресеты.</value></data>
+  <data name="Geo_SaveSource" xml:space="preserve"><value>Сохранить источник</value></data>
+  <data name="Geo_SourceSaved" xml:space="preserve"><value>Источник сохранён. Нажмите «Обновить сейчас», чтобы загрузить базы.</value></data>
+  <data name="Geo_InvalidUrls" xml:space="preserve"><value>Укажите обе ссылки вида https://…</value></data>
+  <data name="GeoError_InvalidSource" xml:space="preserve"><value>Не указаны ссылки на свои geo-базы</value></data>
+  <data name="GeoError_DownloadFailed" xml:space="preserve"><value>Не удалось скачать обновление</value></data>
+  <data name="GeoError_ChecksumMismatch" xml:space="preserve"><value>Файл повреждён при загрузке (не совпала контрольная сумма)</value></data>
+  <data name="GeoError_InvalidFile" xml:space="preserve"><value>Скачанный файл не является geo-базой</value></data>
+  <data name="GeoError_MissingCategory" xml:space="preserve"><value>В новой базе нет категорий, нужных пресетам</value></data>
+  <data name="GeoError_ReplaceFailed" xml:space="preserve"><value>Не удалось заменить файлы на диске</value></data>
+  <data name="GeoError_CoreRejected" xml:space="preserve"><value>Ядро не запустилось с новыми базами — возвращены прежние</value></data>
 </root>

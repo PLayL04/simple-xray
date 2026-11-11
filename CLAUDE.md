@@ -10,14 +10,18 @@
 
 Полная концепция, обоснование стека и дорожная карта: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). **Прочитай его перед любой существенной задачей** и обнови, если решение меняется.
 
-Текущий статус: **M2 (маршрутизация) готов** поверх M1 (подключение через системный прокси с откатом и восстановлением после сбоя). Сделано:
+Текущий статус: **M3 (автообновление geo-баз) готов** поверх M1 (подключение через системный прокси с откатом и восстановлением после сбоя) и M2 (маршрутизация).
+
+M3: фоновая проверка по интервалу и кнопка «Обновить сейчас». Изменения определяются по `.sha256sum`. Перед установкой проверяются структура базы и наличие категорий пресетов, замена идёт с `.bak`, при отказе ядра файлы откатываются. Источник — runetfreedom или свои ссылки.
+
+M2:
 - три встроенных пресета: «Всё через прокси», «Всё, кроме RU» (по умолчанию) и «Только заблокированное»;
 - свои пресеты: дублирование, редактор (форма и JSON), импорт и экспорт (файл, URL), обновление с источника;
 - DNS: удалённый через прокси, прямой — системный;
 - экран настроек, переключатель пресета на главном экране;
 - смена сервера, пресета или настроек на лету: перезапускается только ядро, прокси остаётся.
 
-Следующий этап — M3 (автообновление geo-баз).
+Следующий этап — M4 (TUN).
 
 ## Стек
 
@@ -36,21 +40,24 @@ src/SimpleVpn.Core      net10.0, без UI и без Windows API, TreatWarningsA
   Models/               ServerProfile, AppSettings (+ DnsSettings, ConnectionMode), SystemProxySettings, RuntimeState, ProfilesDocument
   Routing/              RoutingPreset/RoutingRule, BuiltInPresets (Presets/*.json — встроенные ресурсы), PresetRepository,
                         PresetValidator, PresetSerializer, PresetException + PresetError
-  Net/                  HttpDownloader (напрямую, при ошибке — через запущенное ядро)
+  Net/                  HttpDownloader (строка или файл с прогрессом; напрямую, при сетевой ошибке — через запущенное ядро)
+  Geo/                  GeoUpdater (+ GeoUpdateError, GeoStatus, geo-state.json), GeoUpdateScheduler, GeoDatFile
   Parsing/              VlessLinkParser (vless:// ⇄ ServerProfile), LinkParseException + LinkParseError
   Xray/                 XrayConfigBuilder — единственное место, где рождается JSON конфига Xray
   Storage/              AppPaths, ProfileRepository, SettingsStore (settings.json + state.json), GeoFiles,
                         JsonFile (атомарная запись), CoreJsonContext (source-gen)
   Connection/           ConnectionManager (+ IConnectionManager, ConnectionError/Code), LoopbackNetworkProbe
   Abstractions/         ICoreRunner, ISystemProxy, INetworkProbe — реализуются платформой
-src/SimpleVpn.App       Avalonia-библиотека без Application: ViewModels (Main, Settings, PresetEditor, PresetItem),
+src/SimpleVpn.App       Avalonia-библиотека без Application: ViewModels (Main, Settings, GeoSettings, PresetEditor, PresetItem),
                         Services (IClipboardService, IUiDispatcher, IFileService), Styles/Theme.axaml, Localization (Strings.resx = RU, Strings.en.resx = EN)
-src/SimpleVpn.Desktop   net10.0-windows WinExe (SimpleVpn.exe): Program (DI, восстановление после сбоя),
+src/SimpleVpn.Desktop   net10.0-windows WinExe (SimpleVpn.exe): Program (DI, восстановление после сбоя, запуск GeoUpdateScheduler),
                         App.axaml (отключение при выходе), Views (MainView, SettingsView, PresetEditorView), Platform/: XrayProcessRunner + JobObject,
-                        WinInetSystemProxy, FileLoggerProvider, WindowsAppPaths
+                        WinInetSystemProxy, FileLoggerProvider, WindowsAppPaths,
+                        SingleInstance (именованный mutex: второй запуск только активирует окно первого)
 src/SimpleVpn.Android   (позже — свой Application и свои View поверх SimpleVpn.App)
 tests/SimpleVpn.Core.Tests  парсер, генератор (golden-файлы + все встроенные пресеты через настоящий `xray run -test`),
-                            пресеты (валидация, хранилище), ConnectionManager на фейках, хранилище
+                            пресеты (валидация, хранилище), GeoUpdater на локальном HTTP-сервере (TestHttpServer),
+                            ConnectionManager на фейках, хранилище
 tests/SimpleVpn.App.Tests   локализация (паритет RU/EN, тексты для всех кодов ошибок), MainViewModel, SettingsViewModel + редактор
 tools/fetch-xray.ps1    скачивает xray.exe, wintun.dll (с проверкой .dgst) и geo-файлы runetfreedom (с проверкой sha256) в assets/
 assets/                 результат fetch-xray (в .gitignore); Desktop копирует его в core/ и geo/ рядом с exe
@@ -80,13 +87,14 @@ CI: `.github/workflows/build.yml` (windows-latest: build → test → fetch-xray
 - **System.Text.Json source-gen и `init`:** для `init`-свойств генератор подставляет `default`, если поля нет в JSON, а не значение инициализатора. Поэтому модели, которые сериализуются (`Models/*`, `RoutingPreset`, `RoutingRule`), используют `{ get; set; }`. Не меняй на `init`, иначе старые файлы без новых полей прочитаются с `null` и `0`. Регрессионный тест — `Settings_OldFileWithoutNewFields_GetsDefaults`. Экземпляры не мутируй, изменяй через `with`: встроенные пресеты — общие статические объекты.
 - Avalonia, компилируемые привязки: `IsVisible` и `DataContext` на одном элементе не сочетай — `IsVisible` будет искаться в новом `DataContext`. Оборачивай в `Panel` (см. MainView, SettingsView).
 - Строки `.resx` раньше генерировались скриптом; теперь источник истины — сами `Strings.resx` и `Strings.en.resx`. Новые ключи добавляй в оба файла: тест паритета это проверяет.
+- Не оставляй в Bash-командах `cat` без входных данных (например `cat >> /dev/null;`): команда повиснет, ожидая stdin, и это выглядит как зависание тестов.
 - xunit 4: атрибут отключения параллельности — `[assembly: Xunit.v3.Parallelization(Mode = Xunit.Sdk.ParallelMode.None)]`; пропуск теста — `Assert.SkipUnless(...)`.
 - В Git Bash heredoc с кириллицей и `…` внутри длинной составной команды может сломать разбор — большие файлы пиши инструментом Write.
 
 ## Ключевые принципы
 
 1. **Простота на главном экране.** Главный экран: кнопка вкл/выкл, статус, выбор сервера, быстрый переключатель пресета маршрутизации. Всё остальное — в настройках. Иерархия настроек: *Способ подключения* (прокси / TUN) на верхнем уровне, *Маршрутизация* — внутри. Любая новая опция должна иметь разумное значение по умолчанию и не появляться на главном экране без веской причины.
-2. **Никогда не оставлять пользователя без интернета.** Системный прокси откатывается при отключении, при падении xray и при следующем старте после сбоя (флаг в `state.json`). Любая ошибка в `ConnectAsync` откатывает уже применённые шаги.
+2. **Никогда не оставлять пользователя без интернета.** Приложение работает в одном экземпляре на пользователя (`SingleInstance` в `Program.Main` — до логгера и `RecoverAfterCrash`): второй экземпляр сбросил бы прокси первого или запомнил бы его как «прежний». Системный прокси откатывается при отключении, при падении xray и при следующем старте после сбоя (флаг в `state.json`). Любая ошибка в `ConnectAsync` откатывает уже применённые шаги.
 3. **Одно ядро — Xray.** Конфиг Xray генерируется только в `XrayConfigBuilder` из моделей (профиль + пресет + режим + настройки). Нельзя собирать JSON конфига строками в других местах.
 4. **Версия Xray зафиксирована.** Не обновляй ядро «заодно»: XHTTP-параметры меняются между версиями и должны совпадать с сервером. После любого изменения генератора или версии ядра тест `Build_ProducesConfigAcceptedByXray` прогоняет конфиги через настоящий `xray run -test` и падает на любых «deprecated», кроме предупреждений о самих транспортах WS/gRPC. Пример: `allowInsecure` удалён в Xray 26 (замена — `pcs`/`vcn` = `pinnedPeerCertSha256`/`verifyPeerCertByName`), поэтому флаг из ссылки хранится только для экспорта.
 5. **Пресеты — данные, не код.** Встроенные пресеты лежат в JSON-ресурсах (`Core/Routing/Presets/*.json`), пользовательские — в `%APPDATA%\SimpleVpn\presets\<id>.json`. Встроенные неизменяемы, их можно только дублировать. Домены и IP внутри правила — ИЛИ (генератор разбивает правило), остальные поля — И. Новая категория geosite/geoip во встроенном пресете проверяется тестом с настоящим xray.

@@ -13,6 +13,7 @@ namespace SimpleVpn.Core.Storage;
 [JsonSerializable(typeof(ProfilesDocument))]
 [JsonSerializable(typeof(RuntimeState))]
 [JsonSerializable(typeof(SimpleVpn.Core.Routing.RoutingPreset))]
+[JsonSerializable(typeof(SimpleVpn.Core.Geo.GeoState))]
 internal sealed partial class CoreJsonContext : JsonSerializerContext
 {
 }

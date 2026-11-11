@@ -17,6 +17,7 @@ internal sealed class FileLoggerProvider : ILoggerProvider
     {
         Directory.CreateDirectory(directory);
         var path = Path.Combine(directory, "simplevpn.log");
+        var mode = FileMode.Create;
         try
         {
             if (File.Exists(path))
@@ -26,10 +27,11 @@ internal sealed class FileLoggerProvider : ILoggerProvider
         }
         catch (IOException)
         {
-            // Another instance (or the XAML previewer) holds the log; just append to it.
+            // The running app holds the log (we are the XAML previewer): append instead of wiping it.
+            mode = FileMode.Append;
         }
 
-        _writer = new StreamWriter(new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.ReadWrite), new UTF8Encoding(false))
+        _writer = new StreamWriter(new FileStream(path, mode, FileAccess.Write, FileShare.ReadWrite), new UTF8Encoding(false))
         {
             AutoFlush = true,
         };

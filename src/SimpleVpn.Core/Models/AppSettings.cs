@@ -32,6 +32,25 @@ public sealed record DnsSettings
     public bool PreferIPv4 { get; set; } = true;
 }
 
+/// <summary>Where geoip.dat / geosite.dat come from and how often they are refreshed.</summary>
+public sealed record GeoSettings
+{
+    public const string DefaultBaseUrl = "https://github.com/runetfreedom/russia-v2ray-rules-dat/releases/latest/download/";
+
+    public static readonly IReadOnlyList<int> IntervalChoicesHours = [6, 12, 24, 72, 168];
+
+    public bool AutoUpdate { get; set; } = true;
+
+    public int IntervalHours { get; set; } = 24;
+
+    /// <summary>False = runetfreedom (default); true = <see cref="CustomGeoipUrl"/> / <see cref="CustomGeositeUrl"/>.</summary>
+    public bool UseCustomSource { get; set; }
+
+    public string? CustomGeoipUrl { get; set; }
+
+    public string? CustomGeositeUrl { get; set; }
+}
+
 public sealed record AppSettings
 {
     public const int CurrentSchemaVersion = 1;
@@ -49,6 +68,8 @@ public sealed record AppSettings
     public string? SelectedPresetId { get; set; }
 
     public DnsSettings Dns { get; set; } = new();
+
+    public GeoSettings Geo { get; set; } = new();
 
     /// <summary>Preferred local SOCKS port. A free port is chosen automatically when it is busy.</summary>
     public int SocksPort { get; set; } = 10888;

@@ -95,8 +95,10 @@ public sealed partial class SettingsViewModel : ViewModelBase, IDisposable
         HttpDownloader downloader,
         IFileService files,
         IUiDispatcher ui,
-        AppPaths paths)
+        AppPaths paths,
+        GeoSettingsViewModel geo)
     {
+        Geo = geo;
         _presets = presets;
         _settings = settings;
         _connection = connection;
@@ -113,6 +115,9 @@ public sealed partial class SettingsViewModel : ViewModelBase, IDisposable
     public event EventHandler? CloseRequested;
 
     public ObservableCollection<PresetItem> Presets { get; } = [];
+
+    /// <summary>"Geo databases" section.</summary>
+    public GeoSettingsViewModel Geo { get; }
 
     public bool IsEditing => Editor is not null;
 
@@ -136,6 +141,7 @@ public sealed partial class SettingsViewModel : ViewModelBase, IDisposable
         AdvancedMessage = null;
         ReloadPresets();
         LoadSettings();
+        Geo.Refresh();
     }
 
     [RelayCommand]
@@ -512,5 +518,9 @@ public sealed partial class SettingsViewModel : ViewModelBase, IDisposable
 
     private void OnPresetsChanged(object? sender, EventArgs e) => _ui.Post(ReloadPresets);
 
-    public void Dispose() => _presets.Changed -= OnPresetsChanged;
+    public void Dispose()
+    {
+        _presets.Changed -= OnPresetsChanged;
+        Geo.Dispose();
+    }
 }

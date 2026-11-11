@@ -105,6 +105,46 @@
             </StackPanel>
           </Border>
 
+          <!-- Geo databases -->
+          <Border Classes="card" DataContext="{Binding Geo}">
+            <StackPanel Spacing="6" x:DataType="vm:GeoSettingsViewModel">
+              <TextBlock Classes="section" Text="{loc:Loc Geo_Section}" />
+              <TextBlock Classes="caption" Text="{loc:Loc Geo_Hint}" TextWrapping="Wrap" />
+              <TextBlock Text="{Binding LastUpdateText}" TextWrapping="Wrap" AutomationProperties.AutomationId="GeoLastUpdate" />
+              <TextBlock Classes="caption" Text="{Binding LastCheckText}"
+                         IsVisible="{Binding LastCheckText, Converter={x:Static ObjectConverters.IsNotNull}}" />
+              <ProgressBar Value="{Binding ProgressPercent}" Maximum="100" IsVisible="{Binding HasProgress}" />
+              <TextBlock Text="{Binding ResultText}" TextWrapping="Wrap" Classes.error="{Binding IsError}"
+                         IsVisible="{Binding ResultText, Converter={x:Static ObjectConverters.IsNotNull}}"
+                         AutomationProperties.AutomationId="GeoResult" />
+              <Button Content="{loc:Loc Geo_UpdateNow}" Command="{Binding UpdateNowCommand}" IsEnabled="{Binding IsIdle}" />
+
+              <CheckBox IsChecked="{Binding AutoUpdate}" Content="{loc:Loc Geo_AutoUpdate}" />
+              <ComboBox SelectedIndex="{Binding IntervalIndex}" IsEnabled="{Binding AutoUpdate}" HorizontalAlignment="Stretch"
+                        AutomationProperties.Name="{loc:Loc Geo_AutoUpdate}">
+                <ComboBoxItem Content="{loc:Loc Interval_6}" />
+                <ComboBoxItem Content="{loc:Loc Interval_12}" />
+                <ComboBoxItem Content="{loc:Loc Interval_24}" />
+                <ComboBoxItem Content="{loc:Loc Interval_72}" />
+                <ComboBoxItem Content="{loc:Loc Interval_168}" />
+              </ComboBox>
+
+              <TextBlock Classes="caption" Text="{loc:Loc Geo_Source}" Margin="0,4,0,0" />
+              <RadioButton GroupName="geoSource" IsChecked="{Binding UseDefaultSource}" Content="{loc:Loc Geo_SourceDefault}" />
+              <RadioButton GroupName="geoSource" IsChecked="{Binding UseCustomSource}" Content="{loc:Loc Geo_SourceCustom}" />
+              <StackPanel Spacing="6" IsVisible="{Binding UseCustomSource}">
+                <TextBox Text="{Binding CustomGeoipUrl}" PlaceholderText="{loc:Loc Geo_GeoipUrl}"
+                         AutomationProperties.Name="{loc:Loc Geo_GeoipUrl}" />
+                <TextBox Text="{Binding CustomGeositeUrl}" PlaceholderText="{loc:Loc Geo_GeositeUrl}"
+                         AutomationProperties.Name="{loc:Loc Geo_GeositeUrl}" />
+                <TextBlock Classes="caption" Text="{loc:Loc Geo_CustomHint}" TextWrapping="Wrap" />
+                <Button Content="{loc:Loc Geo_SaveSource}" Command="{Binding SaveSourceCommand}" />
+              </StackPanel>
+              <TextBlock Text="{Binding SourceMessage}" TextWrapping="Wrap" Classes.error="{Binding IsSourceMessageError}"
+                         IsVisible="{Binding SourceMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            </StackPanel>
+          </Border>
+
           <!-- General -->
           <Border Classes="card">
             <StackPanel Spacing="6">

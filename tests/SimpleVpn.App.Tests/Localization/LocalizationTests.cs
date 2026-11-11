@@ -65,7 +65,9 @@ public sealed class LocalizationTests
         var keys = ReadResx("Strings.resx").Keys.ToHashSet();
         var expected = Enum.GetNames<Core.Connection.ConnectionErrorCode>().Select(n => $"Error_{n}")
             .Concat(Enum.GetNames<Core.Parsing.LinkParseError>().Select(n => $"LinkError_{n}"))
-            .Concat(Enum.GetNames<Core.Routing.PresetError>().Select(n => $"PresetError_{n}"));
+            .Concat(Enum.GetNames<Core.Routing.PresetError>().Select(n => $"PresetError_{n}"))
+            .Concat(Enum.GetNames<Core.Geo.GeoUpdateError>().Select(n => $"GeoError_{n}"))
+            .Concat(Core.Models.GeoSettings.IntervalChoicesHours.Select(h => $"Interval_{h}"));
 
         Assert.All(expected, key => Assert.Contains(key, keys));
     }
