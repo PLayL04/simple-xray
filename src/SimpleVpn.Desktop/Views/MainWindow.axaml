@@ -4,6 +4,7 @@
         xmlns:loc="using:SimpleVpn.App.Localization"
         x:Class="SimpleVpn.Desktop.Views.MainWindow"
         Title="{loc:Loc AppTitle}"
+        Icon="avares://SimpleVpn/Assets/app.ico"
         Width="420" Height="660"
         MinWidth="360" MinHeight="520"
         WindowStartupLocation="CenterScreen">

@@ -53,6 +53,9 @@ internal static partial class Program
         // Background geo auto-update (first check ~30 s after start).
         services.GetRequiredService<GeoUpdateScheduler>().Start();
 
+        // Country flags for servers without a flag in the name (local geoip.dat lookup).
+        services.GetRequiredService<ServerCountryService>().Start();
+
         var builder = BuildAvaloniaApp(services);
 
         // Escape hatch for broken GPU drivers / remote sessions.
@@ -66,20 +69,8 @@ internal static partial class Program
         return exitCode;
     }
 
-    /// <summary>Another start of the app asked us to show the window.</summary>
-    private static void ActivateMainWindow() => Dispatcher.UIThread.Post(() =>
-    {
-        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime { MainWindow: { } window })
-        {
-            window.Show();
-            if (window.WindowState == WindowState.Minimized)
-            {
-                window.WindowState = WindowState.Normal;
-            }
-
-            window.Activate();
-        }
-    });
+    /// <summary>Another start of the app asked us to show the window (it may be hidden in the tray).</summary>
+    private static void ActivateMainWindow() => Dispatcher.UIThread.Post(() => (Application.Current as App)?.ShowMainWindow());
 
     /// <summary>Entry point for the Avalonia XAML previewer. Do not remove.</summary>
     public static AppBuilder BuildAvaloniaApp() => BuildAvaloniaApp(ConfigureServices([]));
@@ -111,12 +102,19 @@ internal static partial class Program
         services.AddSingleton<ISystemProxy, WinInetSystemProxy>();
         services.AddSingleton<INetworkProbe, LoopbackNetworkProbe>();
         services.AddSingleton<IElevation>(new WindowsElevation(args));
-        services.AddSingleton(new StartupOptions { ConnectOnStart = args.Contains(WindowsElevation.ConnectArgument) });
+        services.AddSingleton(new StartupOptions
+        {
+            ConnectOnStart = args.Contains(WindowsElevation.ConnectArgument),
+            StartHidden = args.Contains(WindowsAutostart.Argument),
+        });
+        services.AddSingleton<IAutostart, WindowsAutostart>();
+        services.AddSingleton<IScreenCapture, WindowsScreenCapture>();
         services.AddSingleton<ConnectionManager>();
         services.AddSingleton<IConnectionManager>(sp => sp.GetRequiredService<ConnectionManager>());
         services.AddSingleton<HttpDownloader>();
         services.AddSingleton<GeoUpdater>();
         services.AddSingleton<GeoUpdateScheduler>();
+        services.AddSingleton<ServerCountryService>();
 
         services.AddSimpleVpnApp();
 

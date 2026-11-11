@@ -18,5 +18,6 @@
 
     <!-- Tests -->
     <PackageVersion Include="xunit.v3" Version="4.0.3" />
+    <PackageVersion Include="ZXing.Net" Version="0.16.11" />
   </ItemGroup>
 </Project>

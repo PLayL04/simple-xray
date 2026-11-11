@@ -89,6 +89,12 @@ public sealed record AppSettings
     /// <summary>Preferred local HTTP port (used for the Windows system proxy).</summary>
     public int HttpPort { get; set; } = 10889;
 
+    /// <summary>Connect right after the app starts (also at sign-in when autostart is on).</summary>
+    public bool ConnectOnStart { get; set; }
+
+    /// <summary>The one-time "the app keeps running in the tray" hint has been shown.</summary>
+    public bool TrayHintShown { get; set; }
+
     /// <summary>Xray log level (core output goes to our log file).</summary>
     public string CoreLogLevel { get; set; } = "warning";
 }

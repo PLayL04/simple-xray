@@ -178,4 +178,40 @@
   <data name="Elevation_Restart" xml:space="preserve"><value>Restart as administrator</value></data>
   <data name="Elevation_UseProxy" xml:space="preserve"><value>Connect via system proxy instead</value></data>
   <data name="Elevation_Declined" xml:space="preserve"><value>The Windows prompt was declined. You can connect via the system proxy.</value></data>
+  <data name="Tray_Open" xml:space="preserve"><value>Open SimpleVpn</value></data>
+  <data name="Tray_Server" xml:space="preserve"><value>Server</value></data>
+  <data name="Tray_Routing" xml:space="preserve"><value>Routing</value></data>
+  <data name="Tray_Exit" xml:space="preserve"><value>Exit</value></data>
+  <data name="TrayHint_Title" xml:space="preserve"><value>SimpleVpn keeps running</value></data>
+  <data name="TrayHint_Text" xml:space="preserve"><value>The window will be hidden, but the app stays in the notification area next to the clock (the icon may hide under the "^" arrow). The connection keeps working. To quit, right-click the icon and choose Exit.</value></data>
+  <data name="TrayHint_Ok" xml:space="preserve"><value>Got it</value></data>
+  <data name="Settings_Autostart" xml:space="preserve"><value>Start with Windows</value></data>
+  <data name="Settings_AutostartHint" xml:space="preserve"><value>The app starts minimized to the tray</value></data>
+  <data name="Settings_ConnectOnStart" xml:space="preserve"><value>Connect on start</value></data>
+  <data name="AddServer_FromImage" xml:space="preserve"><value>From image…</value></data>
+  <data name="AddServer_ScanScreen" xml:space="preserve"><value>Find QR on screen</value></data>
+  <data name="AddServer_ScanScreenHint" xml:space="preserve"><value>Open the QR code (e.g. in a messenger) so that this window does not cover it</value></data>
+  <data name="AddServer_ImageTitle" xml:space="preserve"><value>Image with a QR code</value></data>
+  <data name="AddServer_ImageError" xml:space="preserve"><value>Could not open the image</value></data>
+  <data name="AddServer_QrNotFound" xml:space="preserve"><value>No QR code found</value></data>
+  <data name="AddServer_QrNotVless" xml:space="preserve"><value>A QR code was found, but it has no vless:// link</value></data>
+  <data name="Servers_Section" xml:space="preserve"><value>Servers</value></data>
+  <data name="Servers_Empty" xml:space="preserve"><value>No servers yet. Add one on the main screen with the "+" button.</value></data>
+  <data name="Servers_ShowQr" xml:space="preserve"><value>Show QR</value></data>
+  <data name="Servers_CopyLink" xml:space="preserve"><value>Copy link</value></data>
+  <data name="Servers_Rename" xml:space="preserve"><value>Rename</value></data>
+  <data name="Servers_Delete" xml:space="preserve"><value>Delete</value></data>
+  <data name="Servers_ConfirmDelete" xml:space="preserve"><value>Delete this server? If it is in use, the connection will be closed.</value></data>
+  <data name="Servers_LinkCopied" xml:space="preserve"><value>Link copied. It contains your access key, share it only with people you trust.</value></data>
+  <data name="Servers_QrHint" xml:space="preserve"><value>Scan it with a phone camera or with "Find QR on screen" in another SimpleVpn. The QR code holds your access key, do not post it publicly.</value></data>
+  <data name="Common_Close" xml:space="preserve"><value>Close</value></data>
+  <data name="Log_Show" xml:space="preserve"><value>Show log</value></data>
+  <data name="Log_Title" xml:space="preserve"><value>Log</value></data>
+  <data name="Log_Hint" xml:space="preserve"><value>If something does not work, copy the log and send it to your server admin. Access keys are never written to the log.</value></data>
+  <data name="Log_Refresh" xml:space="preserve"><value>Refresh</value></data>
+  <data name="Log_Copy" xml:space="preserve"><value>Copy</value></data>
+  <data name="Log_Previous" xml:space="preserve"><value>Previous run</value></data>
+  <data name="Log_Copied" xml:space="preserve"><value>Log copied</value></data>
+  <data name="Log_Empty" xml:space="preserve"><value>The log is empty</value></data>
+  <data name="Log_ReadError" xml:space="preserve"><value>Could not read the log</value></data>
 </root>

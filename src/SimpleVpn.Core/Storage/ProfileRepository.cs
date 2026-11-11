@@ -99,6 +99,43 @@ public sealed class ProfileRepository
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
+    /// <summary>Changes the display name only; the active server stays as it is.</summary>
+    public void Rename(Guid id, string name)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        lock (_lock)
+        {
+            var index = _profiles.FindIndex(p => p.Id == id);
+            if (index < 0 || _profiles[index].Name == name)
+            {
+                return;
+            }
+
+            _profiles[index] = _profiles[index] with { Name = name };
+            SaveLocked();
+        }
+
+        Changed?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>Stores the resolved country of a server (no change of the active server).</summary>
+    public void SetCountry(Guid id, string countryCode)
+    {
+        lock (_lock)
+        {
+            var index = _profiles.FindIndex(p => p.Id == id);
+            if (index < 0 || _profiles[index].CountryCode == countryCode)
+            {
+                return;
+            }
+
+            _profiles[index] = _profiles[index] with { CountryCode = countryCode };
+            SaveLocked();
+        }
+
+        Changed?.Invoke(this, EventArgs.Empty);
+    }
+
     public void Select(Guid id)
     {
         lock (_lock)

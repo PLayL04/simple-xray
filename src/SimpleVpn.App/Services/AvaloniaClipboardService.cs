@@ -10,6 +10,20 @@ public sealed class AvaloniaClipboardService : IClipboardService
 {
     public async Task<string?> GetTextAsync()
     {
+        var clipboard = Clipboard();
+        return clipboard is null ? null : await clipboard.TryGetTextAsync();
+    }
+
+    public async Task SetTextAsync(string text)
+    {
+        if (Clipboard() is { } clipboard)
+        {
+            await clipboard.SetTextAsync(text);
+        }
+    }
+
+    private static IClipboard? Clipboard()
+    {
         var topLevel = Application.Current?.ApplicationLifetime switch
         {
             IClassicDesktopStyleApplicationLifetime desktop => desktop.MainWindow,
@@ -17,7 +31,6 @@ public sealed class AvaloniaClipboardService : IClipboardService
             _ => null,
         };
 
-        var clipboard = topLevel?.Clipboard;
-        return clipboard is null ? null : await clipboard.TryGetTextAsync();
+        return topLevel?.Clipboard;
     }
 }

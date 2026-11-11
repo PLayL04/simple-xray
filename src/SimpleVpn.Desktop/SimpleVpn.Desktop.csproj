@@ -5,6 +5,7 @@
     <RootNamespace>SimpleVpn.Desktop</RootNamespace>
     <AssemblyName>SimpleVpn</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <BuiltInComInteropSupport>false</BuiltInComInteropSupport>
     <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
@@ -14,6 +15,10 @@
     <PackageReference Include="Avalonia.Fonts.Inter" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <PackageReference Include="Microsoft.Extensions.Logging" />
+  </ItemGroup>
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\*.ico" />
+    <AvaloniaResource Include="Assets\flags\*.png" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\SimpleVpn.App\SimpleVpn.App.csproj" />

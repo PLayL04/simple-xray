@@ -1,3 +1,6 @@
+using System.Net.Sockets;
+using System.Net;
+using System.Globalization;
 using Microsoft.Extensions.Logging;
 using SimpleVpn.Core.Abstractions;
 using SimpleVpn.Core.Models;
@@ -61,6 +64,9 @@ public sealed partial class ConnectionManager : IConnectionManager, IDisposable
     /// <summary>Mode of the running connection (valid while connected).</summary>
     public ConnectionMode? ActiveMode { get; private set; }
 
+    /// <summary>How long to check whether another local proxy (e.g. v2rayN) still listens before restoring it.</summary>
+    private static readonly TimeSpan LocalProxyProbeTimeout = TimeSpan.FromMilliseconds(500);
+
     /// <summary>How long to wait for the core to start listening.</summary>
     public TimeSpan StartTimeout { get; init; } = TimeSpan.FromSeconds(10);
 
@@ -72,7 +78,7 @@ public sealed partial class ConnectionManager : IConnectionManager, IDisposable
         if (_settings.LoadState().ProxyApplied)
         {
             LogRecovering(_logger);
-            RestoreSystemProxy();
+            RestoreSystemProxyAsync().GetAwaiter().GetResult();
         }
     }
 
@@ -285,7 +291,9 @@ public sealed partial class ConnectionManager : IConnectionManager, IDisposable
             // restores it. When our proxy is already applied (restart on another port) keep the saved original.
             if (!_settings.LoadState().ProxyApplied)
             {
-                _settings.SaveState(new RuntimeState { ProxyApplied = true, PreviousProxy = _systemProxy.GetCurrent() });
+                var previous = _systemProxy.GetCurrent();
+                LogSavedProxy(_logger, previous.Enabled, previous.Server, previous.AutoConfigUrl is not null, previous.AutoDetect);
+                _settings.SaveState(new RuntimeState { ProxyApplied = true, PreviousProxy = previous });
             }
 
             _systemProxy.Apply(new SystemProxySettings
@@ -318,14 +326,14 @@ public sealed partial class ConnectionManager : IConnectionManager, IDisposable
     /// <summary>Restores the system proxy and stops the core. Never throws.</summary>
     private async Task RollbackAsync()
     {
-        RestoreSystemProxy();
+        await RestoreSystemProxyAsync().ConfigureAwait(false);
         _stopping = true;
         await _core.StopAsync().ConfigureAwait(false);
         ActivePorts = null;
         ActiveMode = null;
     }
 
-    private void RestoreSystemProxy()
+    private async Task RestoreSystemProxyAsync()
     {
         try
         {
@@ -335,8 +343,18 @@ public sealed partial class ConnectionManager : IConnectionManager, IDisposable
                 return;
             }
 
-            _systemProxy.Apply(state.PreviousProxy ?? new SystemProxySettings());
+            var previous = state.PreviousProxy ?? new SystemProxySettings();
+            if (previous.Enabled && await IsDeadLocalProxyAsync(previous.Server).ConfigureAwait(false))
+            {
+                // E.g. v2rayN's 127.0.0.1:10808 was on before we connected and v2rayN has been closed since:
+                // turning it back on would leave the user without internet. Keep the address, switch it off.
+                LogDeadProxySkipped(_logger, previous.Server);
+                previous = previous with { Enabled = false };
+            }
+
+            _systemProxy.Apply(previous);
             _settings.SaveState(new RuntimeState());
+            LogRestoredProxy(_logger, previous.Enabled, previous.Server);
         }
 #pragma warning disable CA1031 // Best effort; state.json stays so the next start retries.
         catch (Exception ex)
@@ -344,6 +362,71 @@ public sealed partial class ConnectionManager : IConnectionManager, IDisposable
         {
             LogRestoreFailed(_logger, ex);
         }
+    }
+
+    /// <summary>True when the proxy points only at this machine and nothing listens there (or only our own core does).</summary>
+    private async Task<bool> IsDeadLocalProxyAsync(string? server)
+    {
+        var ports = LocalProxyPorts(server);
+        if (ports is null)
+        {
+            return false;
+        }
+
+        foreach (var port in ports)
+        {
+            var ours = ActivePorts is { } active && (port == active.Http || port == active.Socks);
+            if (!ours && await _network.WaitForTcpAsync(port, LocalProxyProbeTimeout, () => false).ConfigureAwait(false))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Ports of a WinINet proxy string that points only at this machine ("127.0.0.1:10808",
+    /// "http=localhost:1080;https=127.0.0.1:1080"); null when any part is remote or cannot be parsed.
+    /// </summary>
+    private static List<int>? LocalProxyPorts(string? server)
+    {
+        if (string.IsNullOrWhiteSpace(server))
+        {
+            return null;
+        }
+
+        var ports = new List<int>();
+        foreach (var part in server.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var equals = part.IndexOf('=', StringComparison.Ordinal);
+            var value = equals >= 0 ? part[(equals + 1)..] : part;
+            var schemeEnd = value.IndexOf("://", StringComparison.Ordinal);
+            if (schemeEnd >= 0)
+            {
+                value = value[(schemeEnd + 3)..];
+            }
+
+            var colon = value.LastIndexOf(':');
+            if (colon <= 0
+                || !int.TryParse(value[(colon + 1)..], NumberStyles.None, CultureInfo.InvariantCulture, out var port)
+                || port is < 1 or > 65535)
+            {
+                return null;
+            }
+
+            var host = value[..colon];
+            var loopback = string.Equals(host, "localhost", StringComparison.OrdinalIgnoreCase)
+                || (IPAddress.TryParse(host, out var ip) && ip.AddressFamily == AddressFamily.InterNetwork && IPAddress.IsLoopback(ip));
+            if (!loopback)
+            {
+                return null;
+            }
+
+            ports.Add(port);
+        }
+
+        return ports.Count > 0 ? ports : null;
     }
 
     private void OnCoreExited(object? sender, CoreExitedEventArgs e)
@@ -410,4 +493,14 @@ public sealed partial class ConnectionManager : IConnectionManager, IDisposable
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Failed to restore system proxy")]
     private static partial void LogRestoreFailed(ILogger logger, Exception exception);
+
+    // Proxy servers are local or corporate addresses, not secrets; logged so "my proxy stayed on" reports can be explained.
+    [LoggerMessage(Level = LogLevel.Information, Message = "Saved the user's system proxy: enabled {Enabled}, server {Server}, PAC {Pac}, auto-detect {AutoDetect}")]
+    private static partial void LogSavedProxy(ILogger logger, bool enabled, string? server, bool pac, bool autoDetect);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The previous system proxy {Server} points to this machine but nothing listens there; restoring it switched off")]
+    private static partial void LogDeadProxySkipped(ILogger logger, string? server);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Restored the user's system proxy: enabled {Enabled}, server {Server}")]
+    private static partial void LogRestoredProxy(ILogger logger, bool enabled, string? server);
 }

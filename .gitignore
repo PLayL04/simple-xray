@@ -19,7 +19,7 @@ TestResults/
 coverage*.xml
 
 # Downloaded third-party binaries and data (see tools/fetch-xray.ps1)
-assets/
+/assets/
 
 # Local Claude Code settings
 .claude/settings.local.json

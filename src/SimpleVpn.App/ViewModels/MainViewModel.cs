@@ -7,6 +7,7 @@ using SimpleVpn.Core.Abstractions;
 using SimpleVpn.Core.Connection;
 using SimpleVpn.Core.Models;
 using SimpleVpn.Core.Parsing;
+using SimpleVpn.Core.Qr;
 using SimpleVpn.Core.Routing;
 using SimpleVpn.Core.Storage;
 
@@ -27,10 +28,12 @@ public sealed partial class MainViewModel : ViewModelBase, IDisposable
     private readonly IAppLifetime _lifetime;
     private readonly SettingsStore _settingsStore;
     private readonly StartupOptions _startup;
+    private readonly IFileService _files;
+    private readonly IScreenCapture _screen;
     private bool _syncingSelection;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsConnected), nameof(IsBusy), nameof(IsError), nameof(StatusText), nameof(ActionText))]
+    [NotifyPropertyChangedFor(nameof(IsConnected), nameof(IsBusy), nameof(IsError), nameof(StatusText), nameof(ActionText), nameof(TrayToolTip))]
     [NotifyCanExecuteChangedFor(nameof(ToggleConnectionCommand))]
     private ConnectionState _state;
 
@@ -60,6 +63,10 @@ public sealed partial class MainViewModel : ViewModelBase, IDisposable
     [ObservableProperty]
     private string? _elevationMessage;
 
+    /// <summary>One-time "SimpleVpn keeps running in the tray" dialog shown on the first window close.</summary>
+    [ObservableProperty]
+    private bool _isTrayHintOpen;
+
     public MainViewModel(
         IConnectionManager connection,
         ProfileRepository profiles,
@@ -70,8 +77,12 @@ public sealed partial class MainViewModel : ViewModelBase, IDisposable
         SettingsStore settingsStore,
         IElevation elevation,
         IAppLifetime lifetime,
-        StartupOptions startup)
+        StartupOptions startup,
+        IFileService files,
+        IScreenCapture screen)
     {
+        _files = files;
+        _screen = screen;
         _settingsStore = settingsStore;
         _elevation = elevation;
         _lifetime = lifetime;
@@ -90,6 +101,12 @@ public sealed partial class MainViewModel : ViewModelBase, IDisposable
         ReloadServers();
         ReloadPresets();
     }
+
+    /// <summary>The window should be shown and activated (e.g. a dialog needs the user while in the tray).</summary>
+    public event EventHandler? ShowRequested;
+
+    /// <summary>The window should be hidden to the tray.</summary>
+    public event EventHandler? HideRequested;
 
     public SettingsViewModel Settings { get; }
 
@@ -116,6 +133,8 @@ public sealed partial class MainViewModel : ViewModelBase, IDisposable
     };
 
     public string ActionText => IsConnected ? Loc.Get("Action_Disconnect") : Loc.Get("Action_Connect");
+
+    public string TrayToolTip => $"{Loc.Get("AppTitle")}: {StatusText}";
 
     public static string ErrorText(ConnectionError? error) =>
         error is null ? Loc.Get("Status_Error") : Loc.Get($"Error_{error.Code}");
@@ -196,6 +215,59 @@ public sealed partial class MainViewModel : ViewModelBase, IDisposable
         await _connection.ReconnectIfConnectedAsync();
     }
 
+    /// <summary>Largest picture accepted for QR import.</summary>
+    public const int MaxImageBytes = 20 * 1024 * 1024;
+
+    [RelayCommand]
+    private async Task ImportQrImageAsync()
+    {
+        AddServerError = null;
+        RawImage? image;
+        try
+        {
+            image = await _files.OpenImageAsync(Loc.Get("AddServer_ImageTitle"), MaxImageBytes);
+        }
+        catch (IOException)
+        {
+            AddServerError = Loc.Get("AddServer_ImageError");
+            return;
+        }
+
+        if (image is not null)
+        {
+            await AddFromQrAsync(image);
+        }
+    }
+
+    /// <summary>Looks for a QR code anywhere on the screen (e.g. sent in a messenger).</summary>
+    [RelayCommand]
+    private async Task ScanScreenAsync()
+    {
+        AddServerError = null;
+        var image = await Task.Run(_screen.Capture);
+        if (image is null)
+        {
+            AddServerError = Loc.Get("AddServer_QrNotFound");
+            return;
+        }
+
+        await AddFromQrAsync(image);
+    }
+
+    private async Task AddFromQrAsync(RawImage image)
+    {
+        var texts = await Task.Run(() => QrCodec.DecodeAll(image));
+        var link = texts.FirstOrDefault(VlessLinkParser.LooksLikeLink);
+        if (link is null)
+        {
+            AddServerError = Loc.Get(texts.Count > 0 ? "AddServer_QrNotVless" : "AddServer_QrNotFound");
+            return;
+        }
+
+        NewLink = link.Trim();
+        await AddServerAsync();
+    }
+
     [RelayCommand]
     private async Task RemoveSelectedServerAsync()
     {
@@ -212,15 +284,41 @@ public sealed partial class MainViewModel : ViewModelBase, IDisposable
         _profiles.Remove(server.Id);
     }
 
-    /// <summary>Called by the view once the window is shown.</summary>
-    public async Task OnShownAsync()
+    /// <summary>Called once the UI is up (the window may stay hidden when started with the OS).</summary>
+    public async Task OnStartedAsync()
     {
-        // After the elevated restart for VPN mode: carry on with the connection the user asked for.
-        if (_startup.ConnectOnStart && HasServers && !IsConnected)
+        // After the elevated restart for VPN mode, or "connect on start" in the settings.
+        var connect = _startup.ConnectOnStart || _settingsStore.Settings.ConnectOnStart;
+        if (connect && HasServers && State is ConnectionState.Disconnected or ConnectionState.Error)
         {
             await _connection.ConnectAsync();
         }
     }
+
+    /// <summary>The user closed the window: hide to the tray, the first time with an explanation.</summary>
+    public void OnCloseRequested()
+    {
+        if (_settingsStore.Settings.TrayHintShown)
+        {
+            HideRequested?.Invoke(this, EventArgs.Empty);
+            return;
+        }
+
+        IsSettingsOpen = false;
+        IsTrayHintOpen = true;
+    }
+
+    [RelayCommand]
+    private void AcknowledgeTrayHint()
+    {
+        _settingsStore.Update(s => s with { TrayHintShown = true });
+        IsTrayHintOpen = false;
+        HideRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>Exit from the tray menu; the app disconnects on the way out.</summary>
+    [RelayCommand]
+    private void Exit() => _lifetime.Shutdown();
 
     /// <summary>Restarts the app with administrator rights (UAC); the new instance connects right away.</summary>
     [RelayCommand]
@@ -351,6 +449,7 @@ public sealed partial class MainViewModel : ViewModelBase, IDisposable
             ElevationMessage = null;
             IsSettingsOpen = false;
             IsElevationPromptOpen = true;
+            ShowRequested?.Invoke(this, EventArgs.Empty);
         }
     });
 

@@ -4,6 +4,7 @@
              xmlns:models="using:SimpleVpn.Core.Models"
              xmlns:loc="using:SimpleVpn.App.Localization"
              xmlns:views="using:SimpleVpn.Desktop.Views"
+             xmlns:desktop="using:SimpleVpn.Desktop"
              x:Class="SimpleVpn.Desktop.Views.MainView"
              x:DataType="vm:MainViewModel">
   <Panel>
@@ -56,7 +57,12 @@
                         AutomationProperties.Name="{loc:Loc Label_Server}">
                 <ComboBox.ItemTemplate>
                   <DataTemplate x:DataType="models:ServerProfile">
-                    <TextBlock Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis" />
+<StackPanel Orientation="Horizontal" Spacing="8">
+                      <Image Source="{Binding Country, Converter={x:Static desktop:ServerFlags.Converter}}"
+                             Width="20" Height="14" Stretch="Uniform" VerticalAlignment="Center"
+                             IsVisible="{Binding Country, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                      <TextBlock Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                    </StackPanel>
                   </DataTemplate>
                 </ComboBox.ItemTemplate>
               </ComboBox>
@@ -104,12 +110,17 @@
           <TextBlock Text="{Binding AddServerError}"
                      IsVisible="{Binding AddServerError, Converter={x:Static ObjectConverters.IsNotNull}}"
                      Classes="error" TextWrapping="Wrap" />
-          <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8">
+          <WrapPanel ItemSpacing="6" LineSpacing="6">
             <Button Content="{loc:Loc AddServer_Paste}" Command="{Binding PasteLinkCommand}" />
-            <Button Grid.Column="2" Content="{loc:Loc Common_Cancel}" Command="{Binding CancelAddServerCommand}" IsCancel="True" />
-            <Button Grid.Column="3" Content="{loc:Loc AddServer_Confirm}" Command="{Binding AddServerCommand}"
+            <Button Content="{loc:Loc AddServer_FromImage}" Command="{Binding ImportQrImageCommand}" />
+            <Button Content="{loc:Loc AddServer_ScanScreen}" Command="{Binding ScanScreenCommand}"
+                    ToolTip.Tip="{loc:Loc AddServer_ScanScreenHint}" />
+          </WrapPanel>
+          <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+            <Button Content="{loc:Loc Common_Cancel}" Command="{Binding CancelAddServerCommand}" IsCancel="True" />
+            <Button Content="{loc:Loc AddServer_Confirm}" Command="{Binding AddServerCommand}"
                     Classes="accent" IsDefault="True" />
-          </Grid>
+          </StackPanel>
         </StackPanel>
       </Border>
     </Border>
@@ -126,6 +137,18 @@
                   Classes="accent" HorizontalAlignment="Stretch" IsDefault="True" />
           <Button Content="{loc:Loc Elevation_UseProxy}" Command="{Binding UseProxyModeCommand}" HorizontalAlignment="Stretch" />
           <Button Content="{loc:Loc Common_Cancel}" Command="{Binding CancelElevationCommand}" HorizontalAlignment="Stretch" IsCancel="True" />
+        </StackPanel>
+      </Border>
+    </Border>
+
+    <!-- First close of the window: the app keeps running in the tray -->
+    <Border IsVisible="{Binding IsTrayHintOpen}" Classes="overlay">
+      <Border Classes="dialog" VerticalAlignment="Center" Margin="16">
+        <StackPanel Spacing="12">
+          <TextBlock Text="{loc:Loc TrayHint_Title}" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap" />
+          <TextBlock Text="{loc:Loc TrayHint_Text}" TextWrapping="Wrap" />
+          <Button Content="{loc:Loc TrayHint_Ok}" Command="{Binding AcknowledgeTrayHintCommand}"
+                  Classes="accent" HorizontalAlignment="Stretch" IsDefault="True" />
         </StackPanel>
       </Border>
     </Border>

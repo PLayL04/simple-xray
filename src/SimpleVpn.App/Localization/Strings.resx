@@ -178,4 +178,40 @@
   <data name="Elevation_Restart" xml:space="preserve"><value>Перезапустить с правами администратора</value></data>
   <data name="Elevation_UseProxy" xml:space="preserve"><value>Подключиться через системный прокси</value></data>
   <data name="Elevation_Declined" xml:space="preserve"><value>Запрос Windows отклонён. Можно подключиться через системный прокси.</value></data>
+  <data name="Tray_Open" xml:space="preserve"><value>Открыть SimpleVpn</value></data>
+  <data name="Tray_Server" xml:space="preserve"><value>Сервер</value></data>
+  <data name="Tray_Routing" xml:space="preserve"><value>Маршрутизация</value></data>
+  <data name="Tray_Exit" xml:space="preserve"><value>Выход</value></data>
+  <data name="TrayHint_Title" xml:space="preserve"><value>SimpleVpn продолжит работать</value></data>
+  <data name="TrayHint_Text" xml:space="preserve"><value>Окно скроется, а приложение останется в области уведомлений — значок у часов (он может прятаться под стрелкой «^»). Подключение не прервётся. Чтобы выйти, щёлкните значок правой кнопкой и выберите «Выход».</value></data>
+  <data name="TrayHint_Ok" xml:space="preserve"><value>Понятно</value></data>
+  <data name="Settings_Autostart" xml:space="preserve"><value>Запускать при входе в Windows</value></data>
+  <data name="Settings_AutostartHint" xml:space="preserve"><value>Приложение запустится свёрнутым в трей</value></data>
+  <data name="Settings_ConnectOnStart" xml:space="preserve"><value>Подключаться при запуске</value></data>
+  <data name="AddServer_FromImage" xml:space="preserve"><value>Из картинки…</value></data>
+  <data name="AddServer_ScanScreen" xml:space="preserve"><value>Найти QR на экране</value></data>
+  <data name="AddServer_ScanScreenHint" xml:space="preserve"><value>Откройте QR-код (например, в мессенджере) так, чтобы его не закрывало это окно</value></data>
+  <data name="AddServer_ImageTitle" xml:space="preserve"><value>Картинка с QR-кодом</value></data>
+  <data name="AddServer_ImageError" xml:space="preserve"><value>Не удалось открыть картинку</value></data>
+  <data name="AddServer_QrNotFound" xml:space="preserve"><value>QR-код не найден</value></data>
+  <data name="AddServer_QrNotVless" xml:space="preserve"><value>Найден QR-код, но в нём нет ссылки vless://</value></data>
+  <data name="Servers_Section" xml:space="preserve"><value>Серверы</value></data>
+  <data name="Servers_Empty" xml:space="preserve"><value>Серверов пока нет. Добавьте сервер на главном экране кнопкой «+».</value></data>
+  <data name="Servers_ShowQr" xml:space="preserve"><value>Показать QR</value></data>
+  <data name="Servers_CopyLink" xml:space="preserve"><value>Копировать ссылку</value></data>
+  <data name="Servers_Rename" xml:space="preserve"><value>Переименовать</value></data>
+  <data name="Servers_Delete" xml:space="preserve"><value>Удалить</value></data>
+  <data name="Servers_ConfirmDelete" xml:space="preserve"><value>Удалить этот сервер? Если он используется, подключение будет разорвано.</value></data>
+  <data name="Servers_LinkCopied" xml:space="preserve"><value>Ссылка скопирована. В ней ваш ключ доступа — передавайте только тем, кому доверяете.</value></data>
+  <data name="Servers_QrHint" xml:space="preserve"><value>Отсканируйте камерой телефона или кнопкой «Найти QR на экране» в другом SimpleVpn. В QR-коде ваш ключ доступа — не публикуйте его.</value></data>
+  <data name="Common_Close" xml:space="preserve"><value>Закрыть</value></data>
+  <data name="Log_Show" xml:space="preserve"><value>Показать журнал</value></data>
+  <data name="Log_Title" xml:space="preserve"><value>Журнал</value></data>
+  <data name="Log_Hint" xml:space="preserve"><value>Если что-то не работает, скопируйте журнал и отправьте администратору сервера. Ключи доступа в журнал не пишутся.</value></data>
+  <data name="Log_Refresh" xml:space="preserve"><value>Обновить</value></data>
+  <data name="Log_Copy" xml:space="preserve"><value>Копировать</value></data>
+  <data name="Log_Previous" xml:space="preserve"><value>Предыдущий запуск</value></data>
+  <data name="Log_Copied" xml:space="preserve"><value>Журнал скопирован</value></data>
+  <data name="Log_Empty" xml:space="preserve"><value>Журнал пуст</value></data>
+  <data name="Log_ReadError" xml:space="preserve"><value>Не удалось прочитать журнал</value></data>
 </root>

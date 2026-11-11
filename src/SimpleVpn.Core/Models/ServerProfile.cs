@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace SimpleVpn.Core.Models;
 
 /// <summary>
@@ -11,6 +13,12 @@ public sealed record ServerProfile
 
     /// <summary>Display name (link fragment after '#').</summary>
     public string Name { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Lower-case country code of the server address from geoip.dat (for the flag); null until resolved.
+    /// Not part of the link. A flag emoji in <see cref="Name"/> takes precedence.
+    /// </summary>
+    public string? CountryCode { get; set; }
 
     public string Protocol { get; set; } = "vless";
 
@@ -78,5 +86,11 @@ public sealed record ServerProfile
     /// <summary>Link parameters this version does not understand, preserved for export.</summary>
     public IReadOnlyDictionary<string, string> ExtraParameters { get; set; } = new Dictionary<string, string>();
 
-    public string DisplayName => string.IsNullOrWhiteSpace(Name) ? $"{Address}:{Port}" : Name;
+    /// <summary>Name for the UI: flag emoji removed (the flag is shown as a picture); address:port when empty.</summary>
+    [JsonIgnore]
+    public string DisplayName => string.IsNullOrWhiteSpace(Name) ? $"{Address}:{Port}" : Geo.CountryFlags.StripFlags(Name);
+
+    /// <summary>Country for the flag: a flag emoji in the name wins, otherwise the geoip result.</summary>
+    [JsonIgnore]
+    public string? Country => Geo.CountryFlags.CodeFromName(Name) ?? CountryCode;
 }

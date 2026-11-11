@@ -3,6 +3,9 @@
              xmlns:vm="using:SimpleVpn.App.ViewModels"
              xmlns:views="using:SimpleVpn.Desktop.Views"
              xmlns:loc="using:SimpleVpn.App.Localization"
+             xmlns:models="using:SimpleVpn.Core.Models"
+             xmlns:controls="using:SimpleVpn.Desktop.Controls"
+             xmlns:desktop="using:SimpleVpn.Desktop"
              x:Class="SimpleVpn.Desktop.Views.SettingsView"
              x:DataType="vm:SettingsViewModel"
              Background="{DynamicResource SystemRegionBrush}">
@@ -152,6 +155,61 @@
             </StackPanel>
           </Border>
 
+          <!-- Servers -->
+          <Border Classes="card" DataContext="{Binding Servers}">
+            <StackPanel Spacing="8">
+              <TextBlock Classes="section" Text="{loc:Loc Servers_Section}" />
+              <TextBlock Classes="caption" Text="{loc:Loc Servers_Empty}" IsVisible="{Binding !HasServers}" />
+              <ListBox ItemsSource="{Binding Servers}" SelectedItem="{Binding Selected}"
+                       IsVisible="{Binding HasServers}" Background="Transparent"
+                       AutomationProperties.Name="{loc:Loc Servers_Section}">
+                <ListBox.ItemTemplate>
+                  <DataTemplate x:DataType="models:ServerProfile">
+                    <StackPanel>
+                      <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Image Source="{Binding Country, Converter={x:Static desktop:ServerFlags.Converter}}"
+                               Width="20" Height="14" Stretch="Uniform" VerticalAlignment="Center"
+                               IsVisible="{Binding Country, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                        <TextBlock Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                      </StackPanel>
+                      <TextBlock Classes="caption" Text="{Binding Address}" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+              <WrapPanel ItemSpacing="6" LineSpacing="6" IsVisible="{Binding HasServers}">
+                <Button Content="{loc:Loc Servers_ShowQr}" Command="{Binding ShowQrCommand}" />
+                <Button Content="{loc:Loc Servers_CopyLink}" Command="{Binding CopyLinkCommand}" />
+                <Button Content="{loc:Loc Servers_Rename}" Command="{Binding StartRenameCommand}" />
+                <Button Content="{loc:Loc Servers_Delete}" Command="{Binding DeleteCommand}" />
+              </WrapPanel>
+
+              <Border Classes="inset" IsVisible="{Binding IsRenaming}">
+                <StackPanel Spacing="8">
+                  <TextBox Text="{Binding RenameText}" AutomationProperties.Name="{loc:Loc Servers_Rename}"
+                           AutomationProperties.AutomationId="RenameInput" />
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Button Content="{loc:Loc Common_Save}" Command="{Binding SaveRenameCommand}" Classes="accent" />
+                    <Button Content="{loc:Loc Common_Cancel}" Command="{Binding CancelRenameCommand}" />
+                  </StackPanel>
+                </StackPanel>
+              </Border>
+
+              <Border Classes="inset" IsVisible="{Binding IsConfirmingDelete}">
+                <StackPanel Spacing="8">
+                  <TextBlock Text="{loc:Loc Servers_ConfirmDelete}" TextWrapping="Wrap" />
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Button Content="{loc:Loc Servers_Delete}" Command="{Binding ConfirmDeleteCommand}" Classes="danger" />
+                    <Button Content="{loc:Loc Common_Cancel}" Command="{Binding CancelDeleteCommand}" />
+                  </StackPanel>
+                </StackPanel>
+              </Border>
+
+              <TextBlock Text="{Binding Message}" TextWrapping="Wrap"
+                         IsVisible="{Binding Message, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            </StackPanel>
+          </Border>
+
           <!-- General -->
           <Border Classes="card">
             <StackPanel Spacing="6">
@@ -164,6 +222,15 @@
                 <ComboBoxItem Content="{loc:Loc Language_En}" />
               </ComboBox>
               <TextBlock Classes="caption" Text="{loc:Loc Settings_LanguageRestart}" IsVisible="{Binding IsLanguageChanged}" TextWrapping="Wrap" />
+              <CheckBox IsChecked="{Binding Autostart}" AutomationProperties.AutomationId="AutostartCheck">
+                <StackPanel>
+                  <TextBlock Text="{loc:Loc Settings_Autostart}" />
+                  <TextBlock Classes="caption" Text="{loc:Loc Settings_AutostartHint}" TextWrapping="Wrap" />
+                </StackPanel>
+              </CheckBox>
+              <CheckBox IsChecked="{Binding ConnectOnStart}" AutomationProperties.AutomationId="ConnectOnStartCheck">
+                <TextBlock Text="{loc:Loc Settings_ConnectOnStart}" />
+              </CheckBox>
             </StackPanel>
           </Border>
 
@@ -202,7 +269,7 @@
               <WrapPanel ItemSpacing="6" LineSpacing="6">
                 <Button Content="{loc:Loc Settings_Apply}" Command="{Binding ApplyAdvancedCommand}" Classes="accent" />
                 <Button Content="{loc:Loc Settings_Reset}" Command="{Binding ResetAdvancedCommand}" />
-                <Button Content="{loc:Loc Settings_OpenLogs}" Command="{Binding OpenLogsCommand}" />
+                <Button Content="{loc:Loc Log_Show}" Command="{Binding Log.OpenCommand}" />
               </WrapPanel>
             </StackPanel>
           </Expander>
@@ -211,6 +278,48 @@
         </StackPanel>
       </ScrollViewer>
     </Grid>
+
+    <!-- Server link as a QR code -->
+    <Panel IsVisible="{Binding Servers.IsQrOpen}">
+      <Border Classes="overlay" DataContext="{Binding Servers}">
+        <Border Classes="dialog" VerticalAlignment="Center" Margin="16">
+          <StackPanel Spacing="12">
+            <TextBlock Text="{Binding QrTitle}" FontSize="18" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+            <controls:QrCodeView Matrix="{Binding Qr}" Width="280" Height="280" HorizontalAlignment="Center"
+                                 AutomationProperties.AutomationId="ServerQr" />
+            <TextBlock Classes="caption" Text="{loc:Loc Servers_QrHint}" TextWrapping="Wrap" />
+            <Button Content="{loc:Loc Common_Close}" Command="{Binding CloseQrCommand}"
+                    Classes="accent" HorizontalAlignment="Stretch" IsDefault="True" IsCancel="True" />
+          </StackPanel>
+        </Border>
+      </Border>
+    </Panel>
+
+    <!-- Log (sub-page) -->
+    <Panel IsVisible="{Binding Log.IsOpen}">
+      <Grid RowDefinitions="Auto,Auto,*,Auto" DataContext="{Binding Log}" Background="{DynamicResource SystemRegionBrush}">
+        <Grid ColumnDefinitions="Auto,*" Margin="12,12,20,8" ColumnSpacing="8">
+          <Button Content="←" Command="{Binding CloseCommand}" IsCancel="True"
+                  ToolTip.Tip="{loc:Loc Common_Back}" AutomationProperties.Name="{loc:Loc Common_Back}" />
+          <TextBlock Grid.Column="1" Text="{loc:Loc Log_Title}" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" />
+        </Grid>
+        <StackPanel Grid.Row="1" Margin="20,0,20,8" Spacing="6">
+          <TextBlock Classes="caption" Text="{loc:Loc Log_Hint}" TextWrapping="Wrap" />
+          <WrapPanel ItemSpacing="6" LineSpacing="6">
+            <Button Content="{loc:Loc Log_Refresh}" Command="{Binding RefreshCommand}" />
+            <Button Content="{loc:Loc Log_Copy}" Command="{Binding CopyCommand}" Classes="accent" />
+            <Button Content="{loc:Loc Settings_OpenLogs}" Command="{Binding OpenFolderCommand}" />
+          </WrapPanel>
+          <CheckBox IsChecked="{Binding ShowPrevious}" Content="{loc:Loc Log_Previous}" />
+        </StackPanel>
+        <TextBox Grid.Row="2" Margin="20,0,20,12" Text="{Binding Text}" IsReadOnly="True"
+                 FontFamily="Consolas,monospace" FontSize="11" TextWrapping="NoWrap" AcceptsReturn="True"
+                 ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto"
+                 AutomationProperties.AutomationId="LogText" />
+        <TextBlock Grid.Row="3" Margin="20,6,20,12" Text="{Binding Message}"
+                   IsVisible="{Binding Message, Converter={x:Static ObjectConverters.IsNotNull}}" />
+      </Grid>
+    </Panel>
 
     <!-- Preset editor (sub-page) -->
     <Panel IsVisible="{Binding IsEditing}">

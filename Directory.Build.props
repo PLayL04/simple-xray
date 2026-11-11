@@ -9,7 +9,7 @@
     <Deterministic>true</Deterministic>
 
     <Product>SimpleVpn</Product>
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
     <NeutralLanguage>ru</NeutralLanguage>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
   </PropertyGroup>

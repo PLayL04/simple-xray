@@ -17,6 +17,7 @@ public sealed class SettingsViewModelTests : IDisposable
     private readonly PresetRepository _presets;
     private readonly FakeConnectionManager _connection = new();
     private readonly FakeFiles _files = new();
+    private readonly FakeAutostart _autostart = new();
 
     public SettingsViewModelTests()
     {
@@ -34,7 +35,9 @@ public sealed class SettingsViewModelTests : IDisposable
         new InlineDispatcher());
 
     private SettingsViewModel Create() =>
-        new(_presets, _settings, _connection, new HttpDownloader(_connection), _files, new InlineDispatcher(), _paths, Geo());
+        new(_presets, _settings, _connection, new HttpDownloader(_connection), _files, new InlineDispatcher(), _paths, Geo(), _autostart,
+            new ServerListViewModel(new ProfileRepository(_paths), _connection, new FakeClipboard(), new InlineDispatcher()),
+            new LogViewerViewModel(_paths, new FakeClipboard(), _files));
 
     private static void Select(SettingsViewModel vm, string id) => vm.SelectedPreset = vm.Presets.First(p => p.Id == id);
 

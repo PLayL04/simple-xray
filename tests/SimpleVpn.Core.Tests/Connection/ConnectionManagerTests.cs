@@ -215,6 +215,41 @@ public sealed class ConnectionManagerTests : IDisposable
         Assert.False(File.Exists(_paths.StateFile));
     }
 
+    [Theory]
+    [InlineData("127.0.0.1:10808", false, false)]
+    [InlineData("127.0.0.1:10808", true, true)]
+    [InlineData("http=localhost:10808;https=127.0.0.1:10808", false, false)]
+    [InlineData("corp-proxy:3128", false, true)]
+    [InlineData("http=127.0.0.1:10808;https=corp-proxy:3128", false, true)]
+    public async Task Disconnect_PreviousLocalProxyWithoutListener_IsRestoredSwitchedOff(string server, bool listening, bool expectEnabled)
+    {
+        AddServer();
+        var previous = new SystemProxySettings { Enabled = true, Server = server, Bypass = "<local>" };
+        _proxy.Current = previous;
+        _network.Listening = listening ? [10808] : [];
+        using var manager = CreateManager();
+        await manager.ConnectAsync(TestContext.Current.CancellationToken);
+
+        await manager.DisconnectAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(previous with { Enabled = expectEnabled }, _proxy.Current);
+        Assert.False(_settings.LoadState().ProxyApplied);
+    }
+
+    [Fact]
+    public void RecoverAfterCrash_PreviousLocalProxyWithoutListener_IsRestoredSwitchedOff()
+    {
+        var previous = new SystemProxySettings { Enabled = true, Server = "127.0.0.1:10808" };
+        _settings.SaveState(new RuntimeState { ProxyApplied = true, PreviousProxy = previous });
+        _proxy.Current = new SystemProxySettings { Enabled = true, Server = "127.0.0.1:10889" };
+        _network.Listening = [];
+        using var manager = CreateManager();
+
+        manager.RecoverAfterCrash();
+
+        Assert.Equal(previous with { Enabled = false }, _proxy.Current);
+    }
+
     [Fact]
     public void RecoverAfterCrash_CleanShutdown_DoesNotTouchProxy()
     {
@@ -484,8 +519,16 @@ public sealed class ConnectionManagerTests : IDisposable
 
         public int AllocatePort(int preferred, IReadOnlyCollection<int> exclude) => PortOverride(preferred);
 
+        /// <summary>When set, only these ports accept connections, besides our own core's (other local proxies).</summary>
+        public HashSet<int>? Listening { get; set; }
+
         public async Task<bool> WaitForTcpAsync(int port, TimeSpan timeout, Func<bool> shouldAbort, CancellationToken cancellationToken = default)
         {
+            if (Listening is not null && port is not (10888 or 10889))
+            {
+                return Listening.Contains(port);
+            }
+
             if (Ready)
             {
                 return !shouldAbort();

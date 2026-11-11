@@ -27,6 +27,7 @@ public sealed partial class SettingsViewModel : ViewModelBase, IDisposable
     private readonly IFileService _files;
     private readonly IUiDispatcher _ui;
     private readonly AppPaths _paths;
+    private readonly IAutostart _autostartService;
     private bool _syncing;
 
     [ObservableProperty]
@@ -66,6 +67,12 @@ public sealed partial class SettingsViewModel : ViewModelBase, IDisposable
     private bool _blockDnsLeaks;
 
     [ObservableProperty]
+    private bool _autostart;
+
+    [ObservableProperty]
+    private bool _connectOnStart;
+
+    [ObservableProperty]
     private int _languageIndex;
 
     [ObservableProperty]
@@ -103,8 +110,14 @@ public sealed partial class SettingsViewModel : ViewModelBase, IDisposable
         IFileService files,
         IUiDispatcher ui,
         AppPaths paths,
-        GeoSettingsViewModel geo)
+        GeoSettingsViewModel geo,
+        IAutostart autostart,
+        ServerListViewModel servers,
+        LogViewerViewModel log)
     {
+        Servers = servers;
+        Log = log;
+        _autostartService = autostart;
         Geo = geo;
         _presets = presets;
         _settings = settings;
@@ -122,6 +135,12 @@ public sealed partial class SettingsViewModel : ViewModelBase, IDisposable
     public event EventHandler? CloseRequested;
 
     public ObservableCollection<PresetItem> Presets { get; } = [];
+
+    /// <summary>Log page (opened from the advanced section).</summary>
+    public LogViewerViewModel Log { get; }
+
+    /// <summary>"Servers" section.</summary>
+    public ServerListViewModel Servers { get; }
 
     /// <summary>"Geo databases" section.</summary>
     public GeoSettingsViewModel Geo { get; }
@@ -152,6 +171,8 @@ public sealed partial class SettingsViewModel : ViewModelBase, IDisposable
         IsImportingUrl = false;
         PresetMessage = null;
         AdvancedMessage = null;
+        Servers.Refresh();
+        Log.IsOpen = false;
         ReloadPresets();
         LoadSettings();
         Geo.Refresh();
@@ -372,6 +393,34 @@ public sealed partial class SettingsViewModel : ViewModelBase, IDisposable
         }
     }
 
+    partial void OnAutostartChanged(bool value)
+    {
+        if (_syncing)
+        {
+            return;
+        }
+
+        try
+        {
+            _autostartService.SetEnabled(value);
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or System.Security.SecurityException)
+        {
+            // Registry locked down by policy: show the real state.
+            _syncing = true;
+            Autostart = _autostartService.IsEnabled;
+            _syncing = false;
+        }
+    }
+
+    partial void OnConnectOnStartChanged(bool value)
+    {
+        if (!_syncing)
+        {
+            _settings.Update(s => s with { ConnectOnStart = value });
+        }
+    }
+
     partial void OnLanguageIndexChanged(int value)
     {
         if (_syncing)
@@ -437,8 +486,6 @@ public sealed partial class SettingsViewModel : ViewModelBase, IDisposable
         AdvancedMessage = null;
     }
 
-    [RelayCommand]
-    private Task OpenLogsAsync() => _files.OpenFolderAsync(_paths.LogsDirectory);
 
     private void OpenEditor(RoutingPreset preset)
     {
@@ -526,6 +573,8 @@ public sealed partial class SettingsViewModel : ViewModelBase, IDisposable
             LanguageIndex = Math.Max(0, Array.IndexOf(Languages, s.Language));
             IsTunMode = s.Mode == ConnectionMode.Tun;
             BlockDnsLeaks = s.Tun.BlockDnsLeaks;
+            Autostart = _autostartService.IsEnabled;
+            ConnectOnStart = s.ConnectOnStart;
         }
         finally
         {
@@ -563,5 +612,6 @@ public sealed partial class SettingsViewModel : ViewModelBase, IDisposable
     {
         _presets.Changed -= OnPresetsChanged;
         Geo.Dispose();
+        Servers.Dispose();
     }
 }

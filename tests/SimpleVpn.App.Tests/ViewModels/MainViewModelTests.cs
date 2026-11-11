@@ -28,6 +28,9 @@ public sealed class MainViewModelTests : IDisposable
     private readonly FakeClipboard _clipboard = new();
     private readonly FakeElevation _elevation = new();
     private readonly FakeLifetime _lifetime = new();
+    private readonly FakeAutostart _autostart = new();
+    private readonly FakeFiles _files = new();
+    private readonly FakeScreen _screen = new();
     private StartupOptions _startup = new();
 
     public MainViewModelTests()
@@ -49,8 +52,10 @@ public sealed class MainViewModelTests : IDisposable
     private MainViewModel CreateViewModel()
     {
         var dispatcher = new InlineDispatcher();
-        var settings = new SettingsViewModel(_presets, _settings, _connection, new HttpDownloader(_connection), new FakeFiles(), dispatcher, _paths, Geo());
-        return new(_connection, _profiles, _presets, _clipboard, dispatcher, settings, _settings, _elevation, _lifetime, _startup);
+        var settings = new SettingsViewModel(_presets, _settings, _connection, new HttpDownloader(_connection), new FakeFiles(), dispatcher, _paths, Geo(), _autostart,
+            new ServerListViewModel(_profiles, _connection, _clipboard, dispatcher),
+            new LogViewerViewModel(_paths, _clipboard, _files));
+        return new(_connection, _profiles, _presets, _clipboard, dispatcher, settings, _settings, _elevation, _lifetime, _startup, _files, _screen);
     }
 
     [Fact]
@@ -273,7 +278,7 @@ public sealed class MainViewModelTests : IDisposable
         _startup = new StartupOptions { ConnectOnStart = true };
         using var vm = CreateViewModel();
 
-        await vm.OnShownAsync();
+        await vm.OnStartedAsync();
 
         Assert.Equal(1, _connection.ConnectCalls);
     }
@@ -284,7 +289,7 @@ public sealed class MainViewModelTests : IDisposable
         _profiles.AddOrUpdate(Core.Parsing.VlessLinkParser.Parse(Link));
         using var vm = CreateViewModel();
 
-        await vm.OnShownAsync();
+        await vm.OnStartedAsync();
 
         Assert.Equal(0, _connection.ConnectCalls);
     }
@@ -300,5 +305,231 @@ public sealed class MainViewModelTests : IDisposable
         Assert.Equal(Core.Models.ConnectionMode.Tun, new SettingsStore(_paths).Settings.Mode);
         Assert.Equal(1, _connection.ReconnectCalls);
         Assert.False(vm.Settings.IsSystemProxyMode);
+    }
+
+    [Fact]
+    public void FirstClose_ShowsTrayHint_ThenHides()
+    {
+        using var vm = CreateViewModel();
+        var hidden = 0;
+        vm.HideRequested += (_, _) => hidden++;
+
+        vm.OnCloseRequested();
+        Assert.True(vm.IsTrayHintOpen);
+        Assert.Equal(0, hidden);
+
+        vm.AcknowledgeTrayHintCommand.Execute(null);
+        Assert.False(vm.IsTrayHintOpen);
+        Assert.Equal(1, hidden);
+        Assert.True(new SettingsStore(_paths).Settings.TrayHintShown);
+
+        vm.OnCloseRequested();
+        Assert.False(vm.IsTrayHintOpen);
+        Assert.Equal(2, hidden);
+    }
+
+    [Fact]
+    public void ElevationRequired_AsksToShowWindow()
+    {
+        using var vm = CreateViewModel();
+        var shown = 0;
+        vm.ShowRequested += (_, _) => shown++;
+
+        _connection.LastError = new ConnectionError(ConnectionErrorCode.ElevationRequired);
+        _connection.Raise(ConnectionState.Error);
+
+        Assert.Equal(1, shown);
+    }
+
+    [Fact]
+    public async Task ConnectOnStartSetting_ConnectsAfterStart()
+    {
+        _profiles.AddOrUpdate(Core.Parsing.VlessLinkParser.Parse(Link));
+        _settings.Update(s => s with { ConnectOnStart = true });
+        using var vm = CreateViewModel();
+
+        await vm.OnStartedAsync();
+
+        Assert.Equal(1, _connection.ConnectCalls);
+    }
+
+    [Fact]
+    public async Task ConnectOnStart_WithoutServers_DoesNothing()
+    {
+        _settings.Update(s => s with { ConnectOnStart = true });
+        using var vm = CreateViewModel();
+
+        await vm.OnStartedAsync();
+
+        Assert.Equal(0, _connection.ConnectCalls);
+    }
+
+    [Fact]
+    public void Exit_ShutsDown()
+    {
+        using var vm = CreateViewModel();
+
+        vm.ExitCommand.Execute(null);
+
+        Assert.True(_lifetime.ShutdownCalled);
+    }
+
+    [Fact]
+    public void TrayToolTip_FollowsState()
+    {
+        using var vm = CreateViewModel();
+
+        _connection.Raise(ConnectionState.Connected);
+
+        Assert.Contains(Loc.Get("Status_Connected"), vm.TrayToolTip, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Settings_AutostartAndConnectOnStart_AreSaved()
+    {
+        using var vm = CreateViewModel();
+        vm.OpenSettingsCommand.Execute(null);
+
+        vm.Settings.Autostart = true;
+        vm.Settings.ConnectOnStart = true;
+
+        Assert.True(_autostart.IsEnabled);
+        Assert.True(new SettingsStore(_paths).Settings.ConnectOnStart);
+
+        vm.Settings.Autostart = false;
+        Assert.False(_autostart.IsEnabled);
+    }
+
+    [Fact]
+    public async Task QrFromImage_AddsServer()
+    {
+        using var vm = CreateViewModel();
+        await vm.ShowAddServerCommand.ExecuteAsync(null);
+        _files.Image = QrImages.Render(Link);
+
+        await vm.ImportQrImageCommand.ExecuteAsync(null);
+
+        Assert.Null(vm.AddServerError);
+        Assert.False(vm.IsAddingServer);
+        Assert.Single(_profiles.Profiles);
+    }
+
+    [Fact]
+    public async Task ScanScreen_QrWithoutVlessLink_ShowsError()
+    {
+        using var vm = CreateViewModel();
+        await vm.ShowAddServerCommand.ExecuteAsync(null);
+        _screen.Image = QrImages.Render("https://example.com/");
+
+        await vm.ScanScreenCommand.ExecuteAsync(null);
+
+        Assert.Equal(Loc.Get("AddServer_QrNotVless"), vm.AddServerError);
+        Assert.Empty(_profiles.Profiles);
+    }
+
+    [Fact]
+    public async Task ScanScreen_NothingFound_ShowsError()
+    {
+        using var vm = CreateViewModel();
+        var blank = new byte[100 * 100 * 4];
+        Array.Fill(blank, (byte)255);
+        _screen.Image = new Core.Qr.RawImage(blank, 100, 100);
+
+        await vm.ScanScreenCommand.ExecuteAsync(null);
+
+        Assert.Equal(Loc.Get("AddServer_QrNotFound"), vm.AddServerError);
+    }
+
+    [Fact]
+    public void Servers_RenameKeepsActiveServer()
+    {
+        var first = _profiles.AddOrUpdate(Core.Parsing.VlessLinkParser.Parse(Link));
+        var second = _profiles.AddOrUpdate(Core.Parsing.VlessLinkParser.Parse(Link.Replace("vpn.example.com", "two.example.com", StringComparison.Ordinal)));
+        using var vm = CreateViewModel();
+        vm.OpenSettingsCommand.Execute(null);
+        var servers = vm.Settings.Servers;
+        servers.Selected = servers.Servers.First(s => s.Id == first.Id);
+
+        servers.StartRenameCommand.Execute(null);
+        servers.RenameText = "  Home  ";
+        servers.SaveRenameCommand.Execute(null);
+
+        Assert.Equal("Home", _profiles.Profiles.First(p => p.Id == first.Id).Name);
+        Assert.Equal(second.Id, _profiles.Selected?.Id);
+        Assert.Equal(first.Id, servers.Selected?.Id);
+    }
+
+    [Fact]
+    public async Task Servers_ShowQrAndCopyLink_ExportTheLink()
+    {
+        _profiles.AddOrUpdate(Core.Parsing.VlessLinkParser.Parse(Link));
+        using var vm = CreateViewModel();
+        vm.OpenSettingsCommand.Execute(null);
+        var servers = vm.Settings.Servers;
+
+        servers.ShowQrCommand.Execute(null);
+        Assert.True(servers.IsQrOpen);
+        var text = Assert.Single(Core.Qr.QrCodec.DecodeAll(QrImages.Render(servers.Qr!)));
+        Assert.Equal(Core.Parsing.VlessLinkParser.Parse(Link).UserId, Core.Parsing.VlessLinkParser.Parse(text).UserId);
+
+        await servers.CopyLinkCommand.ExecuteAsync(null);
+        Assert.False(servers.IsQrOpen);
+        Assert.StartsWith("vless://", _clipboard.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Servers_DeleteActiveWhileConnected_DisconnectsFirst()
+    {
+        _profiles.AddOrUpdate(Core.Parsing.VlessLinkParser.Parse(Link));
+        using var vm = CreateViewModel();
+        await vm.ToggleConnectionCommand.ExecuteAsync(null);
+        vm.OpenSettingsCommand.Execute(null);
+        var servers = vm.Settings.Servers;
+
+        servers.DeleteCommand.Execute(null);
+        Assert.True(servers.IsConfirmingDelete);
+        await servers.ConfirmDeleteCommand.ExecuteAsync(null);
+
+        Assert.Equal(1, _connection.DisconnectCalls);
+        Assert.Empty(_profiles.Profiles);
+        Assert.False(servers.HasServers);
+    }
+
+    [Fact]
+    public async Task Log_ShowsTailOfCurrentAndPreviousRun()
+    {
+        Directory.CreateDirectory(_paths.LogsDirectory);
+        await File.WriteAllLinesAsync(Path.Combine(_paths.LogsDirectory, "simplevpn.log"),
+            Enumerable.Range(1, LogViewerViewModel.MaxLines + 20).Select(i => $"line {i}"), TestContext.Current.CancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(_paths.LogsDirectory, "simplevpn.1.log"), "old run\n", TestContext.Current.CancellationToken);
+        using var vm = CreateViewModel();
+        vm.OpenSettingsCommand.Execute(null);
+        var log = vm.Settings.Log;
+
+        log.OpenCommand.Execute(null);
+        Assert.True(log.IsOpen);
+        var lines = log.Text.Split(Environment.NewLine);
+        Assert.Equal(LogViewerViewModel.MaxLines, lines.Length);
+        Assert.Equal($"line {LogViewerViewModel.MaxLines + 20}", lines[^1]);
+
+        log.ShowPrevious = true;
+        Assert.Equal("old run", log.Text);
+
+        await log.CopyCommand.ExecuteAsync(null);
+        Assert.Equal("old run", _clipboard.Text);
+
+        await log.OpenFolderCommand.ExecuteAsync(null);
+        Assert.Equal(_paths.LogsDirectory, _files.OpenedFolder);
+    }
+
+    [Fact]
+    public void Log_NoFile_ShowsEmptyText()
+    {
+        using var vm = CreateViewModel();
+        vm.OpenSettingsCommand.Execute(null);
+
+        vm.Settings.Log.OpenCommand.Execute(null);
+
+        Assert.Equal(Loc.Get("Log_Empty"), vm.Settings.Log.Text);
     }
 }

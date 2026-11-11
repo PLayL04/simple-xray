@@ -14,6 +14,12 @@ internal sealed class FakeClipboard : IClipboardService
     public string? Text { get; set; }
 
     public Task<string?> GetTextAsync() => Task.FromResult(Text);
+
+    public Task SetTextAsync(string text)
+    {
+        Text = text;
+        return Task.CompletedTask;
+    }
 }
 
 internal sealed class FakeFiles : IFileService
@@ -40,6 +46,10 @@ internal sealed class FakeFiles : IFileService
         OpenedFolder = path;
         return Task.CompletedTask;
     }
+
+    public Core.Qr.RawImage? Image { get; set; }
+
+    public Task<Core.Qr.RawImage?> OpenImageAsync(string title, int maxBytes) => Task.FromResult(Image);
 }
 
 internal sealed class FakeConnectionManager : IConnectionManager
@@ -105,4 +115,45 @@ internal sealed class FakeLifetime : IAppLifetime
     public bool ShutdownCalled { get; private set; }
 
     public void Shutdown() => ShutdownCalled = true;
+}
+
+internal sealed class FakeAutostart : IAutostart
+{
+    public bool IsEnabled { get; private set; }
+
+    public void SetEnabled(bool enabled) => IsEnabled = enabled;
+}
+
+internal sealed class FakeScreen : IScreenCapture
+{
+    public Core.Qr.RawImage? Image { get; set; }
+
+    public Core.Qr.RawImage? Capture() => Image;
+}
+
+internal static class QrImages
+{
+    /// <summary>A screenshot-like BGRA image with the text as a QR code (4 px per module, quiet zone).</summary>
+    public static Core.Qr.RawImage Render(string text) => Render(Core.Qr.QrCodec.Encode(text));
+
+    public static Core.Qr.RawImage Render(Core.Qr.QrMatrix code)
+    {
+        const int scale = 4, margin = 40;
+        var size = (code.Size * scale) + (2 * margin);
+        var pixels = new byte[size * size * 4];
+        Array.Fill(pixels, (byte)255);
+        for (var y = 0; y < code.Size * scale; y++)
+        {
+            for (var x = 0; x < code.Size * scale; x++)
+            {
+                if (code[x / scale, y / scale])
+                {
+                    var o = (((margin + y) * size) + margin + x) * 4;
+                    pixels[o] = pixels[o + 1] = pixels[o + 2] = 0;
+                }
+            }
+        }
+
+        return new Core.Qr.RawImage(pixels, size, size);
+    }
 }

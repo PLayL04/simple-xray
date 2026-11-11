@@ -14,6 +14,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IFileService, AvaloniaFileService>();
         services.AddSingleton<IAppLifetime, AvaloniaAppLifetime>();
         services.AddTransient<GeoSettingsViewModel>();
+        services.AddTransient<ServerListViewModel>();
+        services.AddTransient<LogViewerViewModel>();
         services.AddTransient<SettingsViewModel>();
         services.AddTransient<MainViewModel>();
         return services;
