@@ -90,6 +90,12 @@ public sealed record ServerProfile
     [JsonIgnore]
     public string DisplayName => string.IsNullOrWhiteSpace(Name) ? $"{Address}:{Port}" : Geo.CountryFlags.StripFlags(Name);
 
+    /// <summary>
+    /// Only the display name: the record's generated ToString would print <see cref="UserId"/> (the access key),
+    /// and list controls expose ToString of their items to accessibility tools and automation.
+    /// </summary>
+    public override string ToString() => DisplayName;
+
     /// <summary>Country for the flag: a flag emoji in the name wins, otherwise the geoip result.</summary>
     [JsonIgnore]
     public string? Country => Geo.CountryFlags.CodeFromName(Name) ?? CountryCode;

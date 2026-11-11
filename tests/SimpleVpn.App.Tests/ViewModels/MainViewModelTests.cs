@@ -532,4 +532,61 @@ public sealed class MainViewModelTests : IDisposable
 
         Assert.Equal(Loc.Get("Log_Empty"), vm.Settings.Log.Text);
     }
+
+    /// <summary>
+    /// Regression: picking a server cleared and refilled the list right away, and the combo box showed nothing.
+    /// The list must stay untouched when only the selection changed.
+    /// </summary>
+    [Fact]
+    public void SwitchingServer_DoesNotRebuildList()
+    {
+        _profiles.AddOrUpdate(Core.Parsing.VlessLinkParser.Parse(Link));
+        var second = _profiles.AddOrUpdate(Core.Parsing.VlessLinkParser.Parse(Link.Replace("vpn.example.com", "two.example.com", StringComparison.Ordinal)));
+        using var vm = CreateViewModel();
+        var first = vm.Servers.First(s => s.Id != second.Id);
+        var listChanges = 0;
+        vm.Servers.CollectionChanged += (_, _) => listChanges++;
+
+        vm.SelectedServer = first;
+
+        Assert.Equal(first.Id, _profiles.Selected?.Id);
+        Assert.Equal(0, listChanges);
+        Assert.Same(first, vm.SelectedServer);
+    }
+
+    [Fact]
+    public void RenamingSelectedServer_ReplacesOnlyThatItemAndKeepsSelection()
+    {
+        var server = _profiles.AddOrUpdate(Core.Parsing.VlessLinkParser.Parse(Link));
+        using var vm = CreateViewModel();
+        var actions = new List<System.Collections.Specialized.NotifyCollectionChangedAction>();
+        vm.Servers.CollectionChanged += (_, e) => actions.Add(e.Action);
+
+        _profiles.Rename(server.Id, "Renamed");
+
+        Assert.Equal([System.Collections.Specialized.NotifyCollectionChangedAction.Replace], actions);
+        Assert.Equal("Renamed", vm.SelectedServer?.Name);
+    }
+
+    [Fact]
+    public void ServerProfile_ToString_HidesAccessKey()
+    {
+        var profile = Core.Parsing.VlessLinkParser.Parse(Link);
+
+        Assert.DoesNotContain(profile.UserId, profile.ToString(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void SwitchingPreset_DoesNotRebuildList()
+    {
+        using var vm = CreateViewModel();
+        var target = vm.Presets.First(p => p.Id != vm.SelectedPreset!.Id);
+        var listChanges = 0;
+        vm.Presets.CollectionChanged += (_, _) => listChanges++;
+
+        vm.SelectedPreset = target;
+
+        Assert.Equal(0, listChanges);
+        Assert.Same(target, vm.SelectedPreset);
+    }
 }

@@ -596,14 +596,11 @@ public sealed partial class SettingsViewModel : ViewModelBase, IDisposable
     {
         var keepId = SelectedPreset?.Id;
         var activeId = _presets.Selected.Id;
-        Presets.Clear();
-        foreach (var preset in _presets.Presets)
-        {
-            Presets.Add(new PresetItem(preset) { IsActive = preset.Id == activeId });
-        }
+        CollectionSync.Sync(Presets, [.. _presets.Presets.Select(p => new PresetItem(p) { IsActive = p.Id == activeId })]);
 
         // Keep the row the user is working with (e.g. a freshly imported preset), else show the active one.
         SelectedPreset = Presets.FirstOrDefault(p => p.Id == keepId) ?? Presets.FirstOrDefault(p => p.IsActive);
+
     }
 
     private void OnPresetsChanged(object? sender, EventArgs e) => _ui.Post(ReloadPresets);

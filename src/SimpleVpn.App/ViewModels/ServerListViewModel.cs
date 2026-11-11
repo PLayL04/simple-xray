@@ -153,12 +153,7 @@ public sealed partial class ServerListViewModel : ViewModelBase, IDisposable
     private void Reload()
     {
         var selectedId = Selected?.Id ?? _profiles.Selected?.Id;
-        Servers.Clear();
-        foreach (var profile in _profiles.Profiles)
-        {
-            Servers.Add(profile);
-        }
-
+        CollectionSync.Sync(Servers, _profiles.Profiles);
         Selected = Servers.FirstOrDefault(p => p.Id == selectedId) ?? Servers.FirstOrDefault();
         OnPropertyChanged(nameof(HasServers));
     }

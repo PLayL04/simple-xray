@@ -373,11 +373,7 @@ public sealed partial class MainViewModel : ViewModelBase, IDisposable
         _syncingSelection = true;
         try
         {
-            Presets.Clear();
-            foreach (var preset in _presets.Presets)
-            {
-                Presets.Add(new PresetItem(preset));
-            }
+            CollectionSync.Sync(Presets, [.. _presets.Presets.Select(p => new PresetItem(p))]);
 
             var activeId = _presets.Selected.Id;
             SelectedPreset = Presets.FirstOrDefault(p => p.Id == activeId);
@@ -406,11 +402,9 @@ public sealed partial class MainViewModel : ViewModelBase, IDisposable
         _syncingSelection = true;
         try
         {
-            Servers.Clear();
-            foreach (var profile in _profiles.Profiles)
-            {
-                Servers.Add(profile);
-            }
+            // Minimal edits, not Clear(): picking a server triggers this reload, and clearing the list right after
+            // the pick left the combo box showing nothing.
+            CollectionSync.Sync(Servers, _profiles.Profiles);
 
             var selectedId = _profiles.Selected?.Id;
             SelectedServer = Servers.FirstOrDefault(p => p.Id == selectedId);
