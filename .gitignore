@@ -1,0 +1,25 @@
+# Build output
+bin/
+obj/
+artifacts/
+publish/
+
+# IDE
+.vs/
+.idea/
+*.user
+*.suo
+*.DotSettings.user
+.vscode/*
+!.vscode/extensions.json
+
+# Test results
+TestResults/
+*.trx
+coverage*.xml
+
+# Downloaded third-party binaries and data (see tools/fetch-xray.ps1)
+assets/
+
+# Local Claude Code settings
+.claude/settings.local.json

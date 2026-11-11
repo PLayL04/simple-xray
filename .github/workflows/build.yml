@@ -1,0 +1,45 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      DOTNET_NOLOGO: "1"
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore -c Release
+
+      - name: Test
+        run: dotnet test --no-build -c Release
+
+      - name: Fetch Xray core and geo files
+        shell: pwsh
+        run: ./tools/fetch-xray.ps1
+
+      - name: Publish (win-x64, self-contained)
+        run: dotnet publish src/SimpleVpn.Desktop -c Release -r win-x64 --self-contained -o publish/SimpleVpn
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: SimpleVpn-win-x64
+          path: publish/SimpleVpn
+          if-no-files-found: error
