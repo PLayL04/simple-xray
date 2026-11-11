@@ -9,13 +9,14 @@ namespace SimpleVpn.Core.Tests.Xray;
 
 public sealed class XrayConfigBuilderTests
 {
-    private static XrayConfigRequest Request(string link, RoutingPreset? preset = null, DnsSettings? dns = null) => new()
+    private static XrayConfigRequest Request(string link, RoutingPreset? preset = null, DnsSettings? dns = null, ConnectionMode mode = ConnectionMode.SystemProxy) => new()
     {
         Profile = VlessLinkParser.Parse(link),
         SocksPort = 10888,
         HttpPort = 10889,
         Preset = preset ?? BuiltInPresets.Global,
         Dns = dns ?? new DnsSettings(),
+        Mode = mode,
     };
 
     private static JsonArray Rules(JsonObject config) => config["routing"]!["rules"]!.AsArray();
@@ -28,17 +29,22 @@ public sealed class XrayConfigBuilderTests
         DefaultOutbound = defaultOutbound,
     };
 
-    public static TheoryData<string, string> LinksAndPresets()
+    public static TheoryData<string, string, ConnectionMode> LinksAndPresets()
     {
-        var data = new TheoryData<string, string>();
+        var data = new TheoryData<string, string, ConnectionMode>();
         foreach (var link in TestLinks.AllLinks)
         {
-            data.Add(link, BuiltInPresets.GlobalId);
+            data.Add(link, BuiltInPresets.GlobalId, ConnectionMode.SystemProxy);
         }
 
         foreach (var preset in BuiltInPresets.All.Where(p => p.Id != BuiltInPresets.GlobalId))
         {
-            data.Add(TestLinks.XhttpTls, preset.Id);
+            data.Add(TestLinks.XhttpTls, preset.Id, ConnectionMode.SystemProxy);
+        }
+
+        foreach (var preset in BuiltInPresets.All)
+        {
+            data.Add(TestLinks.XhttpTls, preset.Id, ConnectionMode.Tun);
         }
 
         return data;
@@ -47,20 +53,17 @@ public sealed class XrayConfigBuilderTests
     private static JsonNode Stream(JsonObject config) => config["outbounds"]![0]!["streamSettings"]!;
 
     /// <summary>
-    /// Golden file: the full config for the production setup. If it fails after an intended change,
-    /// compare with the written <c>*.actual.json</c> and copy it over the golden file.
-    /// </summary>
-    /// <summary>
     /// Golden files: the full config for the production setup. If one fails after an intended change,
     /// compare with the written <c>*.actual.json</c> and copy it over the golden file.
     /// </summary>
     [Theory]
-    [InlineData("xhttp-tls.json", BuiltInPresets.GlobalId)]
-    [InlineData("xhttp-tls-bypass-ru.json", BuiltInPresets.BypassRuId)]
-    public void Build_XhttpTls_MatchesGoldenFile(string fileName, string presetId)
+    [InlineData("xhttp-tls.json", BuiltInPresets.GlobalId, ConnectionMode.SystemProxy)]
+    [InlineData("xhttp-tls-bypass-ru.json", BuiltInPresets.BypassRuId, ConnectionMode.SystemProxy)]
+    [InlineData("xhttp-tls-bypass-ru-tun.json", BuiltInPresets.BypassRuId, ConnectionMode.Tun)]
+    public void Build_XhttpTls_MatchesGoldenFile(string fileName, string presetId, ConnectionMode mode)
     {
         var golden = Path.Combine(RepoPaths.Root, "tests", "SimpleVpn.Core.Tests", "Xray", "Golden", fileName);
-        var request = Request(TestLinks.XhttpTls, BuiltInPresets.Get(presetId));
+        var request = Request(TestLinks.XhttpTls, BuiltInPresets.Get(presetId), mode: mode);
         var actual = XrayConfigBuilder.Build(request);
 
         var expected = File.Exists(golden) ? JsonNode.Parse(File.ReadAllText(golden)) : null;
@@ -69,6 +72,39 @@ public sealed class XrayConfigBuilderTests
             File.WriteAllText(Path.ChangeExtension(golden, ".actual.json"), XrayConfigBuilder.BuildJson(request));
             Assert.Fail($"Config differs from {golden}; see the .actual.json next to it.");
         }
+    }
+
+    [Fact]
+    public void Tun_AddsTunInboundFirstDnsOutboundAndDnsRule()
+    {
+        var config = XrayConfigBuilder.Build(Request(TestLinks.XhttpTls, mode: ConnectionMode.Tun));
+
+        var tun = config["inbounds"]![0]!;
+        Assert.Equal("tun", (string?)tun["protocol"]);
+        Assert.Equal(XrayConfigBuilder.TunName, (string?)tun["settings"]!["name"]);
+        Assert.Equal("auto", (string?)tun["settings"]!["autoOutboundsInterface"]);
+        Assert.Equal("dns", (string?)tun["settings"]!["autoSystemWfpBlockLeak"]![0]);
+        Assert.Contains(config["outbounds"]!.AsArray(), o => (string?)o!["protocol"] == "dns");
+        var first = Rules(config)[0]!;
+        Assert.Equal(XrayConfigBuilder.TunTag, (string?)first["inboundTag"]![0]);
+        Assert.Equal(XrayConfigBuilder.DnsOutTag, (string?)first["outboundTag"]);
+    }
+
+    [Fact]
+    public void Tun_DnsLeakProtectionOff_OmitsWfpFilter()
+    {
+        var request = Request(TestLinks.XhttpTls, mode: ConnectionMode.Tun) with { Tun = new TunSettings { BlockDnsLeaks = false } };
+
+        Assert.Null(XrayConfigBuilder.Build(request)["inbounds"]![0]!["settings"]!["autoSystemWfpBlockLeak"]);
+    }
+
+    [Fact]
+    public void SystemProxyMode_HasNoTunParts()
+    {
+        var config = XrayConfigBuilder.Build(Request(TestLinks.XhttpTls));
+
+        Assert.DoesNotContain(config["inbounds"]!.AsArray(), i => (string?)i!["protocol"] == "tun");
+        Assert.DoesNotContain(config["outbounds"]!.AsArray(), o => (string?)o!["protocol"] == "dns");
     }
 
     [Fact]
@@ -190,7 +226,7 @@ public sealed class XrayConfigBuilderTests
     /// </summary>
     [Theory]
     [MemberData(nameof(LinksAndPresets))]
-    public async Task Build_ProducesConfigAcceptedByXray(string link, string presetId)
+    public async Task Build_ProducesConfigAcceptedByXray(string link, string presetId, ConnectionMode mode)
     {
         Assert.SkipUnless(File.Exists(RepoPaths.XrayExe), "assets/core/xray.exe missing; run tools/fetch-xray.ps1");
 
@@ -198,7 +234,7 @@ public sealed class XrayConfigBuilderTests
         try
         {
             var configPath = Path.Combine(dir.FullName, "config.json");
-            await File.WriteAllTextAsync(configPath, XrayConfigBuilder.BuildJson(Request(link, BuiltInPresets.Get(presetId))), TestContext.Current.CancellationToken);
+            await File.WriteAllTextAsync(configPath, XrayConfigBuilder.BuildJson(Request(link, BuiltInPresets.Get(presetId), mode: mode)), TestContext.Current.CancellationToken);
 
             var psi = new ProcessStartInfo(RepoPaths.XrayExe, ["run", "-test", "-c", configPath])
             {

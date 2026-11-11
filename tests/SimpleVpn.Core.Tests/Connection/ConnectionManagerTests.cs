@@ -20,6 +20,7 @@ public sealed class ConnectionManagerTests : IDisposable
     private readonly FakeCore _core = new();
     private readonly FakeSystemProxy _proxy = new() { Current = UserProxy };
     private readonly FakeNetwork _network = new();
+    private readonly FakeElevation _elevation = new();
 
     public ConnectionManagerTests()
     {
@@ -39,7 +40,7 @@ public sealed class ConnectionManagerTests : IDisposable
     public void Dispose() => _root.Delete(recursive: true);
 
     private ConnectionManager CreateManager() =>
-        new(_paths, _profiles, _presets, _settings, _core, _proxy, _network, NullLogger<ConnectionManager>.Instance)
+        new(_paths, _profiles, _presets, _settings, _core, _proxy, _network, _elevation, NullLogger<ConnectionManager>.Instance)
         {
             StartTimeout = TimeSpan.FromMilliseconds(200),
         };
@@ -308,6 +309,89 @@ public sealed class ConnectionManagerTests : IDisposable
     }
 
     [Fact]
+    public async Task Tun_NotElevated_ReportsElevationRequiredWithoutStartingCore()
+    {
+        AddServer();
+        _settings.Update(s => s with { Mode = ConnectionMode.Tun });
+        _elevation.IsElevated = false;
+        using var manager = CreateManager();
+
+        await manager.ConnectAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(ConnectionErrorCode.ElevationRequired, manager.LastError?.Code);
+        Assert.Equal(0, _core.StartCalls);
+        Assert.Equal(UserProxy, _proxy.Current);
+    }
+
+    [Fact]
+    public async Task Tun_Elevated_StartsTunAndLeavesSystemProxyAlone()
+    {
+        AddServer();
+        _settings.Update(s => s with { Mode = ConnectionMode.Tun });
+        using var manager = CreateManager();
+
+        await manager.ConnectAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(ConnectionState.Connected, manager.State);
+        Assert.Equal(ConnectionMode.Tun, manager.ActiveMode);
+        Assert.Equal(0, _proxy.ApplyCalls);
+        Assert.False(_settings.LoadState().ProxyApplied);
+        var config = await File.ReadAllTextAsync(Path.Combine(_paths.RuntimeDirectory, "config.json"), TestContext.Current.CancellationToken);
+        Assert.Contains("\"protocol\": \"tun\"", config, StringComparison.Ordinal);
+
+        await manager.DisconnectAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(0, _proxy.ApplyCalls);
+        Assert.False(_core.IsRunning);
+    }
+
+    [Fact]
+    public async Task Tun_AdapterDoesNotComeUp_ReportsTunFailedAndStopsCore()
+    {
+        AddServer();
+        _settings.Update(s => s with { Mode = ConnectionMode.Tun });
+        _network.InterfaceUp = false;
+        using var manager = CreateManager();
+
+        await manager.ConnectAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(ConnectionErrorCode.TunFailed, manager.LastError?.Code);
+        Assert.False(_core.IsRunning);
+    }
+
+    [Fact]
+    public async Task SwitchingProxyToTunWhileConnected_RestoresUserProxyAndStartsTun()
+    {
+        AddServer();
+        using var manager = CreateManager();
+        await manager.ConnectAsync(TestContext.Current.CancellationToken);
+        Assert.True(_proxy.Current.Enabled && _proxy.Current.Server == "127.0.0.1:10889");
+
+        _settings.Update(s => s with { Mode = ConnectionMode.Tun });
+        await manager.ReconnectIfConnectedAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(ConnectionState.Connected, manager.State);
+        Assert.Equal(ConnectionMode.Tun, manager.ActiveMode);
+        Assert.Equal(UserProxy, _proxy.Current);
+        Assert.False(_settings.LoadState().ProxyApplied);
+    }
+
+    [Fact]
+    public async Task SwitchingToTunWithoutRights_EndsInElevationRequiredWithProxyRestored()
+    {
+        AddServer();
+        using var manager = CreateManager();
+        await manager.ConnectAsync(TestContext.Current.CancellationToken);
+        _elevation.IsElevated = false;
+
+        _settings.Update(s => s with { Mode = ConnectionMode.Tun });
+        await manager.ReconnectIfConnectedAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(ConnectionErrorCode.ElevationRequired, manager.LastError?.Code);
+        Assert.Equal(UserProxy, _proxy.Current);
+        Assert.False(_core.IsRunning);
+    }
+
+    [Fact]
     public async Task ReconnectIfConnected_WhenDisconnected_DoesNothing()
     {
         AddServer();
@@ -380,9 +464,21 @@ public sealed class ConnectionManagerTests : IDisposable
         }
     }
 
+    private sealed class FakeElevation : IElevation
+    {
+        public bool IsElevated { get; set; } = true;
+
+        public bool RestartElevated() => false;
+    }
+
     private sealed class FakeNetwork : INetworkProbe
     {
         public bool Ready { get; set; } = true;
+
+        public bool InterfaceUp { get; set; } = true;
+
+        public Task<bool> WaitForInterfaceAsync(string name, TimeSpan timeout, Func<bool> shouldAbort, CancellationToken cancellationToken = default) =>
+            Task.FromResult(InterfaceUp && !shouldAbort());
 
         public Func<int, int> PortOverride { get; set; } = p => p;
 

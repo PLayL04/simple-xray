@@ -10,7 +10,7 @@
 
 Полная концепция, обоснование стека и дорожная карта: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). **Прочитай его перед любой существенной задачей** и обнови, если решение меняется.
 
-Текущий статус: **M3 (автообновление geo-баз) готов** поверх M1 (подключение через системный прокси с откатом и восстановлением после сбоя) и M2 (маршрутизация).
+Текущий статус: **M4 (TUN) готов**. Механика проверена вживую с правами администратора: адаптер, маршруты, DNS, аварийное завершение xray, отключение и выход. Трафик через настоящий сервер в TUN ещё не проверялся. M4 работает поверх M3 (автообновление geo-баз), M1 (подключение через системный прокси с откатом и восстановлением после сбоя) и M2 (маршрутизация).
 
 M3: фоновая проверка по интервалу и кнопка «Обновить сейчас». Изменения определяются по `.sha256sum`. Перед установкой проверяются структура базы и наличие категорий пресетов, замена идёт с `.bak`, при отказе ядра файлы откатываются. Источник — runetfreedom или свои ссылки.
 
@@ -21,7 +21,9 @@ M2:
 - экран настроек, переключатель пресета на главном экране;
 - смена сервера, пресета или настроек на лету: перезапускается только ядро, прокси остаётся.
 
-Следующий этап — M4 (TUN).
+M4: режим «VPN (TUN)» в настройках. Используется `tun` inbound Xray (`autoSystemRoutingTable`, `autoOutboundsInterface: auto`, WFP-блокировка утечек DNS), DNS с порта 53 уходит в outbound `dns`, системный прокси не трогается. Без прав `ConnectionManager` возвращает `ElevationRequired`, и главный экран предлагает перезапуск через UAC (`--connect --elevated-restart`) или режим прокси.
+
+Следующий этап — M5 (трей, автозапуск, QR, установщик).
 
 ## Стек
 
@@ -47,12 +49,12 @@ src/SimpleVpn.Core      net10.0, без UI и без Windows API, TreatWarningsA
   Storage/              AppPaths, ProfileRepository, SettingsStore (settings.json + state.json), GeoFiles,
                         JsonFile (атомарная запись), CoreJsonContext (source-gen)
   Connection/           ConnectionManager (+ IConnectionManager, ConnectionError/Code), LoopbackNetworkProbe
-  Abstractions/         ICoreRunner, ISystemProxy, INetworkProbe — реализуются платформой
+  Abstractions/         ICoreRunner, ISystemProxy, INetworkProbe, IElevation — реализуются платформой
 src/SimpleVpn.App       Avalonia-библиотека без Application: ViewModels (Main, Settings, GeoSettings, PresetEditor, PresetItem),
                         Services (IClipboardService, IUiDispatcher, IFileService), Styles/Theme.axaml, Localization (Strings.resx = RU, Strings.en.resx = EN)
 src/SimpleVpn.Desktop   net10.0-windows WinExe (SimpleVpn.exe): Program (DI, восстановление после сбоя, запуск GeoUpdateScheduler),
                         App.axaml (отключение при выходе), Views (MainView, SettingsView, PresetEditorView), Platform/: XrayProcessRunner + JobObject,
-                        WinInetSystemProxy, FileLoggerProvider, WindowsAppPaths,
+                        WinInetSystemProxy, WindowsElevation (runas), FileLoggerProvider, WindowsAppPaths,
                         SingleInstance (именованный mutex: второй запуск только активирует окно первого)
 src/SimpleVpn.Android   (позже — свой Application и свои View поверх SimpleVpn.App)
 tests/SimpleVpn.Core.Tests  парсер, генератор (golden-файлы + все встроенные пресеты через настоящий `xray run -test`),
@@ -82,6 +84,7 @@ CI: `.github/workflows/build.yml` (windows-latest: build → test → fetch-xray
 - `dotnet restore` / `dotnet tool install` иногда падают с «The SSL connection could not be established» к nuget.org, хотя curl работает. Это сетевой сбой — повтори команду.
 - Первый запуск свежесобранного self-contained exe может «висеть» без окна 10+ секунд (сканирование антивирусом) — это не баг кода.
 - Первый `Process.Start` свежего `xray.exe` тоже может занять ~20 с (антивирус). Поэтому `ConnectAsync` выполняет тяжёлую часть в `Task.Run` — не возвращай её в UI-поток.
+- Живую проверку TUN проводи автономным скриптом с правами администратора. Он сам выполняет все шаги, всё убирает в `finally`, а отдельный процесс-сторож завершает xray и приложение по таймеру. Во время прогона сеть Claude Code может пропасть, поэтому интерактивно управлять TUN нельзя.
 - Если ПК заблокирован, захват экрана показывает экран блокировки. Для проверки UI используй `PrintWindow` (флаг 2) для снимка и UI Automation (`InvokePattern`, `ValuePattern`) для нажатий и ввода. Кнопки находятся по `AutomationProperties.Name`, статус и поле ссылки — по `AutomationId` (`StatusText`, `LinkInput`). Для ручных проверок запускай с файлом `portable` рядом с exe, чтобы не трогать `%APPDATA%`, и сохраняй настройки прокси (`reg export "HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings"`) перед подключением.
 - Скрипты PowerShell 5.1 без BOM читаются в ANSI — не пиши в них кириллицу (для UI-проверок запускай приложение с `--lang en`).
 - **System.Text.Json source-gen и `init`:** для `init`-свойств генератор подставляет `default`, если поля нет в JSON, а не значение инициализатора. Поэтому модели, которые сериализуются (`Models/*`, `RoutingPreset`, `RoutingRule`), используют `{ get; set; }`. Не меняй на `init`, иначе старые файлы без новых полей прочитаются с `null` и `0`. Регрессионный тест — `Settings_OldFileWithoutNewFields_GetsDefaults`. Экземпляры не мутируй, изменяй через `with`: встроенные пресеты — общие статические объекты.
@@ -116,6 +119,6 @@ CI: `.github/workflows/build.yml` (windows-latest: build → test → fetch-xray
 ## Открытые вопросы (см. §11 в ARCHITECTURE.md)
 
 - Выход из Windows / выключение ПК при подключении: прокси восстановится только при следующем запуске приложения. Обработать завершение сеанса (WM_QUERYENDSESSION) — в M5 вместе с треем и автозапуском.
-- Точные ключи TUN inbound для зафиксированной версии Xray — проверить до M4.
+- TUN: проверить трафик через настоящий сервер (XHTTP) и кнопку перезапуска через UAC.
 - Способ встраивания Xray на Android — исследовать до M6.
 - Финальное название приложения.

@@ -59,6 +59,13 @@ public sealed partial class SettingsViewModel : ViewModelBase, IDisposable
     private bool _isPresetMessageError;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsSystemProxyMode))]
+    private bool _isTunMode;
+
+    [ObservableProperty]
+    private bool _blockDnsLeaks;
+
+    [ObservableProperty]
     private int _languageIndex;
 
     [ObservableProperty]
@@ -126,6 +133,12 @@ public sealed partial class SettingsViewModel : ViewModelBase, IDisposable
     public bool CanModifySelected => SelectedPreset is { IsBuiltIn: false };
 
     public bool HasSource => SelectedPreset?.Preset.SourceUrl is not null;
+
+    public bool IsSystemProxyMode
+    {
+        get => !IsTunMode;
+        set => IsTunMode = !value;
+    }
 
     public static string VersionText => Loc.Format("Settings_About", Version);
 
@@ -333,6 +346,32 @@ public sealed partial class SettingsViewModel : ViewModelBase, IDisposable
         }
     }
 
+    /// <summary>Applies at once; while connected the connection is re-established in the new mode.</summary>
+    partial void OnIsTunModeChanged(bool value)
+    {
+        if (_syncing)
+        {
+            return;
+        }
+
+        _settings.Update(s => s with { Mode = value ? ConnectionMode.Tun : ConnectionMode.SystemProxy });
+        _ = _connection.ReconnectIfConnectedAsync();
+    }
+
+    partial void OnBlockDnsLeaksChanged(bool value)
+    {
+        if (_syncing)
+        {
+            return;
+        }
+
+        _settings.Update(s => s with { Tun = s.Tun with { BlockDnsLeaks = value } });
+        if (IsTunMode)
+        {
+            _ = _connection.ReconnectIfConnectedAsync();
+        }
+    }
+
     partial void OnLanguageIndexChanged(int value)
     {
         if (_syncing)
@@ -485,6 +524,8 @@ public sealed partial class SettingsViewModel : ViewModelBase, IDisposable
         try
         {
             LanguageIndex = Math.Max(0, Array.IndexOf(Languages, s.Language));
+            IsTunMode = s.Mode == ConnectionMode.Tun;
+            BlockDnsLeaks = s.Tun.BlockDnsLeaks;
         }
         finally
         {

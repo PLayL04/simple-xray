@@ -10,7 +10,7 @@ public enum ConnectionMode
     [JsonStringEnumMemberName("proxy")]
     SystemProxy,
 
-    /// <summary>TUN adapter, all system traffic (admin rights). Not implemented yet (M4).</summary>
+    /// <summary>TUN adapter (Wintun), all system traffic; needs administrator rights.</summary>
     [JsonStringEnumMemberName("tun")]
     Tun,
 }
@@ -51,6 +51,16 @@ public sealed record GeoSettings
     public string? CustomGeositeUrl { get; set; }
 }
 
+/// <summary>VPN (TUN) mode options.</summary>
+public sealed record TunSettings
+{
+    /// <summary>
+    /// Block DNS queries (ports 53/853 and the Windows DNS Client) that would leave outside the TUN
+    /// (Xray <c>autoSystemWfpBlockLeak: ["dns"]</c>, a WFP filter that disappears with the process).
+    /// </summary>
+    public bool BlockDnsLeaks { get; set; } = true;
+}
+
 public sealed record AppSettings
 {
     public const int CurrentSchemaVersion = 1;
@@ -68,6 +78,8 @@ public sealed record AppSettings
     public string? SelectedPresetId { get; set; }
 
     public DnsSettings Dns { get; set; } = new();
+
+    public TunSettings Tun { get; set; } = new();
 
     public GeoSettings Geo { get; set; } = new();
 

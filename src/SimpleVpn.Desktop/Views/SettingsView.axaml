@@ -22,18 +22,25 @@
           <Border Classes="card">
             <StackPanel Spacing="6">
               <TextBlock Classes="section" Text="{loc:Loc Settings_ModeSection}" />
-              <RadioButton GroupName="mode" IsChecked="True">
+              <RadioButton GroupName="mode" IsChecked="{Binding IsSystemProxyMode}">
                 <StackPanel>
                   <TextBlock Text="{loc:Loc Mode_SystemProxy}" />
                   <TextBlock Classes="caption" Text="{loc:Loc Mode_SystemProxyHint}" TextWrapping="Wrap" />
                 </StackPanel>
               </RadioButton>
-              <RadioButton GroupName="mode" IsEnabled="False">
+              <RadioButton GroupName="mode" IsChecked="{Binding IsTunMode}"
+                           AutomationProperties.AutomationId="TunModeRadio">
                 <StackPanel>
                   <TextBlock Text="{loc:Loc Mode_Tun}" />
                   <TextBlock Classes="caption" Text="{loc:Loc Mode_TunHint}" TextWrapping="Wrap" />
                 </StackPanel>
               </RadioButton>
+              <CheckBox IsChecked="{Binding BlockDnsLeaks}" IsVisible="{Binding IsTunMode}" Margin="28,0,0,0">
+                <StackPanel>
+                  <TextBlock Text="{loc:Loc Tun_BlockDnsLeaks}" />
+                  <TextBlock Classes="caption" Text="{loc:Loc Tun_BlockDnsLeaksHint}" TextWrapping="Wrap" />
+                </StackPanel>
+              </CheckBox>
             </StackPanel>
           </Border>
 

@@ -12,6 +12,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IClipboardService, AvaloniaClipboardService>();
         services.AddSingleton<IUiDispatcher, AvaloniaUiDispatcher>();
         services.AddSingleton<IFileService, AvaloniaFileService>();
+        services.AddSingleton<IAppLifetime, AvaloniaAppLifetime>();
         services.AddTransient<GeoSettingsViewModel>();
         services.AddTransient<SettingsViewModel>();
         services.AddTransient<MainViewModel>();

@@ -8,7 +8,7 @@ using SimpleVpn.Core.Xray;
 namespace SimpleVpn.Core.Connection;
 
 /// <summary>
-/// System-proxy connection: generate config → start core → wait until it listens → apply system proxy.
+/// Connection in system-proxy or TUN mode: generate config → start core → wait until it listens → apply system proxy.
 /// Every failure rolls back what was already applied. The previous system proxy is persisted in
 /// state.json before it is changed, so <see cref="RecoverAfterCrash"/> can restore it after a crash.
 /// </summary>
@@ -21,6 +21,7 @@ public sealed partial class ConnectionManager : IConnectionManager, IDisposable
     private readonly ICoreRunner _core;
     private readonly ISystemProxy _systemProxy;
     private readonly INetworkProbe _network;
+    private readonly IElevation _elevation;
     private readonly ILogger<ConnectionManager> _logger;
     private readonly SemaphoreSlim _gate = new(1, 1);
 
@@ -35,6 +36,7 @@ public sealed partial class ConnectionManager : IConnectionManager, IDisposable
         ICoreRunner core,
         ISystemProxy systemProxy,
         INetworkProbe network,
+        IElevation elevation,
         ILogger<ConnectionManager> logger)
     {
         _paths = paths;
@@ -44,6 +46,7 @@ public sealed partial class ConnectionManager : IConnectionManager, IDisposable
         _core = core;
         _systemProxy = systemProxy;
         _network = network;
+        _elevation = elevation;
         _logger = logger;
         _core.Exited += OnCoreExited;
     }
@@ -54,6 +57,9 @@ public sealed partial class ConnectionManager : IConnectionManager, IDisposable
 
     /// <summary>Local ports of the running core (valid while connected).</summary>
     public (int Socks, int Http)? ActivePorts { get; private set; }
+
+    /// <summary>Mode of the running connection (valid while connected).</summary>
+    public ConnectionMode? ActiveMode { get; private set; }
 
     /// <summary>How long to wait for the core to start listening.</summary>
     public TimeSpan StartTimeout { get; init; } = TimeSpan.FromSeconds(10);
@@ -144,6 +150,14 @@ public sealed partial class ConnectionManager : IConnectionManager, IDisposable
             await Task.Run(
                 async () =>
                 {
+                    if (_settings.Settings.Mode != ActiveMode)
+                    {
+                        // Proxy <-> TUN: undo everything of the old mode (system proxy) and start from scratch.
+                        await RollbackAsync().ConfigureAwait(false);
+                        await StartCoreAsync(previousPorts: null, cancellationToken).ConfigureAwait(false);
+                        return;
+                    }
+
                     _stopping = true;
                     await _core.StopAsync().ConfigureAwait(false);
                     await StartCoreAsync(ActivePorts, cancellationToken).ConfigureAwait(false);
@@ -199,6 +213,12 @@ public sealed partial class ConnectionManager : IConnectionManager, IDisposable
         }
 
         var settings = _settings.Settings;
+        var mode = settings.Mode;
+        if (mode == ConnectionMode.Tun && !_elevation.IsElevated)
+        {
+            throw Fail(ConnectionErrorCode.ElevationRequired);
+        }
+
         var preset = _presets.Selected;
         var socksPort = _network.AllocatePort(previousPorts?.Socks ?? settings.SocksPort, []);
         var httpPort = _network.AllocatePort(previousPorts?.Http ?? settings.HttpPort, [socksPort]);
@@ -212,11 +232,13 @@ public sealed partial class ConnectionManager : IConnectionManager, IDisposable
             HttpPort = httpPort,
             Preset = preset,
             Dns = settings.Dns,
+            Mode = mode,
+            Tun = settings.Tun,
             LogLevel = settings.CoreLogLevel,
         });
         await File.WriteAllTextAsync(configPath, json, cancellationToken).ConfigureAwait(false);
 
-        LogStarting(_logger, profile.Network, profile.Security, preset.Id, socksPort, httpPort);
+        LogStarting(_logger, profile.Network, profile.Security, preset.Id, mode, socksPort, httpPort);
         _stopping = false;
         try
         {
@@ -236,12 +258,23 @@ public sealed partial class ConnectionManager : IConnectionManager, IDisposable
             throw Fail(code, _core.RecentOutput);
         }
 
-        if (previousPorts is null || previousPorts.Value.Http != httpPort)
+        if (mode == ConnectionMode.Tun)
+        {
+            // The TUN inbound starts before SOCKS, but make sure the adapter is really up before reporting success.
+            var tunUp = await _network.WaitForInterfaceAsync(XrayConfigBuilder.TunName, StartTimeout, () => !_core.IsRunning, cancellationToken)
+                .ConfigureAwait(false);
+            if (!tunUp)
+            {
+                throw Fail(_core.IsRunning ? ConnectionErrorCode.TunFailed : ConnectionErrorCode.CoreExited, _core.RecentOutput);
+            }
+        }
+        else if (previousPorts is null || previousPorts.Value.Http != httpPort)
         {
             ApplySystemProxy(httpPort);
         }
 
         ActivePorts = (socksPort, httpPort);
+        ActiveMode = mode;
     }
 
     private void ApplySystemProxy(int httpPort)
@@ -289,6 +322,7 @@ public sealed partial class ConnectionManager : IConnectionManager, IDisposable
         _stopping = true;
         await _core.StopAsync().ConfigureAwait(false);
         ActivePorts = null;
+        ActiveMode = null;
     }
 
     private void RestoreSystemProxy()
@@ -356,8 +390,8 @@ public sealed partial class ConnectionManager : IConnectionManager, IDisposable
     private static ConnectionFailedException Fail(ConnectionErrorCode code, string? detail = null) =>
         new(new ConnectionError(code, detail));
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Starting core: {Network}/{Security}, preset {Preset}, socks {SocksPort}, http {HttpPort}")]
-    private static partial void LogStarting(ILogger logger, string network, string security, string preset, int socksPort, int httpPort);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Starting core: {Network}/{Security}, preset {Preset}, mode {Mode}, socks {SocksPort}, http {HttpPort}")]
+    private static partial void LogStarting(ILogger logger, string network, string security, string preset, ConnectionMode mode, int socksPort, int httpPort);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Restarting core to apply new settings")]
     private static partial void LogRestarting(ILogger logger);

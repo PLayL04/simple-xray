@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SimpleVpn.App;
 using SimpleVpn.App.Localization;
+using SimpleVpn.App.Services;
 using SimpleVpn.Core.Abstractions;
 using SimpleVpn.Core.Connection;
 using SimpleVpn.Core.Geo;
@@ -23,13 +24,13 @@ internal static partial class Program
     public static int Main(string[] args)
     {
         // Before anything touches the log, state.json or the system proxy.
-        using var instance = SingleInstance.Claim(ActivateMainWindow);
+        using var instance = SingleInstance.Claim(ActivateMainWindow, waitForPrevious: args.Contains(WindowsElevation.RestartArgument));
         if (!instance.IsFirst)
         {
             return 0;
         }
 
-        using var services = ConfigureServices();
+        using var services = ConfigureServices(args);
         var logger = services.GetRequiredService<ILoggerFactory>().CreateLogger("App");
         var version = typeof(Program).Assembly.GetName().Version?.ToString() ?? "?";
         var portable = services.GetRequiredService<AppPaths>().IsPortable;
@@ -81,7 +82,7 @@ internal static partial class Program
     });
 
     /// <summary>Entry point for the Avalonia XAML previewer. Do not remove.</summary>
-    public static AppBuilder BuildAvaloniaApp() => BuildAvaloniaApp(ConfigureServices());
+    public static AppBuilder BuildAvaloniaApp() => BuildAvaloniaApp(ConfigureServices([]));
 
     private static AppBuilder BuildAvaloniaApp(IServiceProvider services) =>
         AppBuilder.Configure(() => new App(services))
@@ -89,7 +90,7 @@ internal static partial class Program
             .WithInterFont()
             .LogToTrace();
 
-    private static ServiceProvider ConfigureServices()
+    private static ServiceProvider ConfigureServices(string[] args)
     {
         var paths = WindowsAppPaths.Resolve();
         paths.EnsureCreated();
@@ -109,6 +110,8 @@ internal static partial class Program
             new XrayProcessRunner(Path.Combine(paths.CoreDirectory, "xray.exe"), sp.GetRequiredService<ILoggerFactory>()));
         services.AddSingleton<ISystemProxy, WinInetSystemProxy>();
         services.AddSingleton<INetworkProbe, LoopbackNetworkProbe>();
+        services.AddSingleton<IElevation>(new WindowsElevation(args));
+        services.AddSingleton(new StartupOptions { ConnectOnStart = args.Contains(WindowsElevation.ConnectArgument) });
         services.AddSingleton<ConnectionManager>();
         services.AddSingleton<IConnectionManager>(sp => sp.GetRequiredService<ConnectionManager>());
         services.AddSingleton<HttpDownloader>();

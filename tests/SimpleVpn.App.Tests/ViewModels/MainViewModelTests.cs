@@ -26,6 +26,9 @@ public sealed class MainViewModelTests : IDisposable
     private readonly PresetRepository _presets;
     private readonly FakeConnectionManager _connection = new();
     private readonly FakeClipboard _clipboard = new();
+    private readonly FakeElevation _elevation = new();
+    private readonly FakeLifetime _lifetime = new();
+    private StartupOptions _startup = new();
 
     public MainViewModelTests()
     {
@@ -47,7 +50,7 @@ public sealed class MainViewModelTests : IDisposable
     {
         var dispatcher = new InlineDispatcher();
         var settings = new SettingsViewModel(_presets, _settings, _connection, new HttpDownloader(_connection), new FakeFiles(), dispatcher, _paths, Geo());
-        return new(_connection, _profiles, _presets, _clipboard, dispatcher, settings);
+        return new(_connection, _profiles, _presets, _clipboard, dispatcher, settings, _settings, _elevation, _lifetime, _startup);
     }
 
     [Fact]
@@ -216,5 +219,86 @@ public sealed class MainViewModelTests : IDisposable
 
         vm.Settings.CloseCommand.Execute(null);
         Assert.False(vm.IsSettingsOpen);
+    }
+
+    [Fact]
+    public void ElevationRequired_OpensPrompt_RestartShutsDown()
+    {
+        using var vm = CreateViewModel();
+
+        _connection.LastError = new ConnectionError(ConnectionErrorCode.ElevationRequired);
+        _connection.Raise(ConnectionState.Error);
+        Assert.True(vm.IsElevationPromptOpen);
+
+        _elevation.Accept = true;
+        vm.RestartElevatedCommand.Execute(null);
+
+        Assert.Equal(1, _elevation.RestartCalls);
+        Assert.True(_lifetime.ShutdownCalled);
+        Assert.False(vm.IsElevationPromptOpen);
+    }
+
+    [Fact]
+    public void ElevationDeclined_KeepsPromptWithMessage()
+    {
+        using var vm = CreateViewModel();
+        _connection.LastError = new ConnectionError(ConnectionErrorCode.ElevationRequired);
+        _connection.Raise(ConnectionState.Error);
+
+        vm.RestartElevatedCommand.Execute(null);
+
+        Assert.False(_lifetime.ShutdownCalled);
+        Assert.True(vm.IsElevationPromptOpen);
+        Assert.Equal(Loc.Get("Elevation_Declined"), vm.ElevationMessage);
+    }
+
+    [Fact]
+    public async Task UseProxyMode_SwitchesModeAndConnects()
+    {
+        _profiles.AddOrUpdate(Core.Parsing.VlessLinkParser.Parse(Link));
+        _settings.Update(s => s with { Mode = Core.Models.ConnectionMode.Tun });
+        using var vm = CreateViewModel();
+
+        await vm.UseProxyModeCommand.ExecuteAsync(null);
+
+        Assert.Equal(Core.Models.ConnectionMode.SystemProxy, new SettingsStore(_paths).Settings.Mode);
+        Assert.Equal(1, _connection.ConnectCalls);
+        Assert.False(vm.Settings.IsTunMode);
+    }
+
+    [Fact]
+    public async Task ConnectOnStart_ConnectsWhenWindowShown()
+    {
+        _profiles.AddOrUpdate(Core.Parsing.VlessLinkParser.Parse(Link));
+        _startup = new StartupOptions { ConnectOnStart = true };
+        using var vm = CreateViewModel();
+
+        await vm.OnShownAsync();
+
+        Assert.Equal(1, _connection.ConnectCalls);
+    }
+
+    [Fact]
+    public async Task WithoutConnectOnStart_DoesNotConnect()
+    {
+        _profiles.AddOrUpdate(Core.Parsing.VlessLinkParser.Parse(Link));
+        using var vm = CreateViewModel();
+
+        await vm.OnShownAsync();
+
+        Assert.Equal(0, _connection.ConnectCalls);
+    }
+
+    [Fact]
+    public void Settings_TunToggle_SavesModeAndReconnects()
+    {
+        using var vm = CreateViewModel();
+        vm.OpenSettingsCommand.Execute(null);
+
+        vm.Settings.IsTunMode = true;
+
+        Assert.Equal(Core.Models.ConnectionMode.Tun, new SettingsStore(_paths).Settings.Mode);
+        Assert.Equal(1, _connection.ReconnectCalls);
+        Assert.False(vm.Settings.IsSystemProxyMode);
     }
 }

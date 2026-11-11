@@ -33,9 +33,35 @@ internal sealed class SingleInstance : IDisposable
     /// Claims the instance. When another instance already runs, signals it to activate and returns an object with
     /// <see cref="IsFirst"/> = false; <paramref name="onActivate"/> is called (on a pool thread) for later starts.
     /// </summary>
-    public static SingleInstance Claim(Action onActivate)
+    /// <param name="waitForPrevious">
+    /// Elevated restart: the previous (non-elevated) instance is shutting down, so wait for it instead of deferring to it.
+    /// </param>
+    public static SingleInstance Claim(Action onActivate, bool waitForPrevious = false)
     {
-        var mutex = new Mutex(initiallyOwned: true, MutexName, out var createdNew);
+        Mutex mutex;
+        bool createdNew;
+        try
+        {
+            mutex = new Mutex(initiallyOwned: true, MutexName, out createdNew);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Held by an elevated instance whose objects a normal one may not open: that instance is running.
+            return new SingleInstance(new Mutex(), activate: null, onActivate: null);
+        }
+
+        if (!createdNew && waitForPrevious)
+        {
+            try
+            {
+                createdNew = mutex.WaitOne(TimeSpan.FromSeconds(15));
+            }
+            catch (AbandonedMutexException)
+            {
+                createdNew = true;
+            }
+        }
+
         if (!createdNew)
         {
             try

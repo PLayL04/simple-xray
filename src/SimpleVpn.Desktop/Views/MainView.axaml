@@ -114,6 +114,22 @@
       </Border>
     </Border>
 
+    <!-- "VPN mode needs administrator rights" -->
+    <Border IsVisible="{Binding IsElevationPromptOpen}" Classes="overlay">
+      <Border Classes="dialog" VerticalAlignment="Center" Margin="16">
+        <StackPanel Spacing="12">
+          <TextBlock Text="{loc:Loc Elevation_Title}" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap" />
+          <TextBlock Text="{loc:Loc Elevation_Text}" TextWrapping="Wrap" />
+          <TextBlock Text="{Binding ElevationMessage}" Classes="error" TextWrapping="Wrap"
+                     IsVisible="{Binding ElevationMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
+          <Button Content="{loc:Loc Elevation_Restart}" Command="{Binding RestartElevatedCommand}"
+                  Classes="accent" HorizontalAlignment="Stretch" IsDefault="True" />
+          <Button Content="{loc:Loc Elevation_UseProxy}" Command="{Binding UseProxyModeCommand}" HorizontalAlignment="Stretch" />
+          <Button Content="{loc:Loc Common_Cancel}" Command="{Binding CancelElevationCommand}" HorizontalAlignment="Stretch" IsCancel="True" />
+        </StackPanel>
+      </Border>
+    </Border>
+
     <!-- Settings screen over the main screen -->
     <Panel IsVisible="{Binding IsSettingsOpen}">
       <views:SettingsView DataContext="{Binding Settings}" />

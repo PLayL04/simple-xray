@@ -20,6 +20,12 @@ public enum ConnectionErrorCode
     /// <summary>Applying the system proxy failed.</summary>
     SystemProxyFailed,
 
+    /// <summary>VPN (TUN) mode needs administrator rights; the UI offers to restart elevated.</summary>
+    ElevationRequired,
+
+    /// <summary>The TUN adapter did not come up (driver blocked, adapter conflict).</summary>
+    TunFailed,
+
     Unexpected,
 }
 

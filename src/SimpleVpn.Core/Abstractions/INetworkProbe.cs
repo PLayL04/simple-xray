@@ -10,4 +10,7 @@ public interface INetworkProbe
     /// <param name="shouldAbort">Polled between attempts; returning true stops waiting (e.g. the core exited).</param>
     /// <returns>True when the port is accepting connections within <paramref name="timeout"/>.</returns>
     Task<bool> WaitForTcpAsync(int port, TimeSpan timeout, Func<bool> shouldAbort, CancellationToken cancellationToken = default);
+
+    /// <summary>Waits until a network interface named <paramref name="name"/> is up (the TUN adapter).</summary>
+    Task<bool> WaitForInterfaceAsync(string name, TimeSpan timeout, Func<bool> shouldAbort, CancellationToken cancellationToken = default);
 }

@@ -23,10 +23,10 @@ public sealed partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            desktop.MainWindow = new MainWindow
-            {
-                DataContext = _services.GetRequiredService<MainViewModel>(),
-            };
+            var viewModel = _services.GetRequiredService<MainViewModel>();
+            var window = new MainWindow { DataContext = viewModel };
+            window.Opened += async (_, _) => await viewModel.OnShownAsync();
+            desktop.MainWindow = window;
 
             // Closing the app disconnects: restores the system proxy and stops the core.
             // TODO(M5): with the tray icon, closing the window will only hide it.

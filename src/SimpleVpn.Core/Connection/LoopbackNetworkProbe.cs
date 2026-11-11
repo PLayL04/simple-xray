@@ -67,6 +67,31 @@ public sealed class LoopbackNetworkProbe : INetworkProbe
         return false;
     }
 
+    public async Task<bool> WaitForInterfaceAsync(string name, TimeSpan timeout, Func<bool> shouldAbort, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(shouldAbort);
+        var stopwatch = Stopwatch.StartNew();
+        while (stopwatch.Elapsed < timeout)
+        {
+            if (shouldAbort())
+            {
+                return false;
+            }
+
+            var up = System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces()
+                .Any(i => string.Equals(i.Name, name, StringComparison.OrdinalIgnoreCase) &&
+                          i.OperationalStatus == System.Net.NetworkInformation.OperationalStatus.Up);
+            if (up)
+            {
+                return true;
+            }
+
+            await Task.Delay(RetryDelay * 2, cancellationToken).ConfigureAwait(false);
+        }
+
+        return false;
+    }
+
     private static bool IsFree(int port)
     {
         try

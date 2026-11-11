@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SimpleVpn.App.Localization;
 using SimpleVpn.App.Services;
+using SimpleVpn.Core.Abstractions;
 using SimpleVpn.Core.Connection;
 using SimpleVpn.Core.Models;
 using SimpleVpn.Core.Parsing;
@@ -22,6 +23,10 @@ public sealed partial class MainViewModel : ViewModelBase, IDisposable
     private readonly PresetRepository _presets;
     private readonly IClipboardService _clipboard;
     private readonly IUiDispatcher _ui;
+    private readonly IElevation _elevation;
+    private readonly IAppLifetime _lifetime;
+    private readonly SettingsStore _settingsStore;
+    private readonly StartupOptions _startup;
     private bool _syncingSelection;
 
     [ObservableProperty]
@@ -48,14 +53,29 @@ public sealed partial class MainViewModel : ViewModelBase, IDisposable
     [ObservableProperty]
     private bool _isSettingsOpen;
 
+    /// <summary>"VPN mode needs administrator rights" dialog.</summary>
+    [ObservableProperty]
+    private bool _isElevationPromptOpen;
+
+    [ObservableProperty]
+    private string? _elevationMessage;
+
     public MainViewModel(
         IConnectionManager connection,
         ProfileRepository profiles,
         PresetRepository presets,
         IClipboardService clipboard,
         IUiDispatcher ui,
-        SettingsViewModel settings)
+        SettingsViewModel settings,
+        SettingsStore settingsStore,
+        IElevation elevation,
+        IAppLifetime lifetime,
+        StartupOptions startup)
     {
+        _settingsStore = settingsStore;
+        _elevation = elevation;
+        _lifetime = lifetime;
+        _startup = startup;
         _connection = connection;
         _profiles = profiles;
         _presets = presets;
@@ -192,6 +212,43 @@ public sealed partial class MainViewModel : ViewModelBase, IDisposable
         _profiles.Remove(server.Id);
     }
 
+    /// <summary>Called by the view once the window is shown.</summary>
+    public async Task OnShownAsync()
+    {
+        // After the elevated restart for VPN mode: carry on with the connection the user asked for.
+        if (_startup.ConnectOnStart && HasServers && !IsConnected)
+        {
+            await _connection.ConnectAsync();
+        }
+    }
+
+    /// <summary>Restarts the app with administrator rights (UAC); the new instance connects right away.</summary>
+    [RelayCommand]
+    private void RestartElevated()
+    {
+        if (_elevation.RestartElevated())
+        {
+            IsElevationPromptOpen = false;
+            _lifetime.Shutdown();
+            return;
+        }
+
+        ElevationMessage = Loc.Get("Elevation_Declined");
+    }
+
+    /// <summary>Gives up VPN mode for now: switches to the system proxy and connects.</summary>
+    [RelayCommand]
+    private async Task UseProxyModeAsync()
+    {
+        IsElevationPromptOpen = false;
+        _settingsStore.Update(s => s with { Mode = ConnectionMode.SystemProxy });
+        Settings.Refresh();
+        await _connection.ConnectAsync();
+    }
+
+    [RelayCommand]
+    private void CancelElevation() => IsElevationPromptOpen = false;
+
     [RelayCommand]
     private void OpenSettings()
     {
@@ -288,6 +345,13 @@ public sealed partial class MainViewModel : ViewModelBase, IDisposable
 
         // Error -> Error with a different reason does not change State; refresh the text explicitly.
         OnPropertyChanged(nameof(StatusText));
+
+        if (state == ConnectionState.Error && _connection.LastError?.Code == ConnectionErrorCode.ElevationRequired)
+        {
+            ElevationMessage = null;
+            IsSettingsOpen = false;
+            IsElevationPromptOpen = true;
+        }
     });
 
     private void OnProfilesChanged(object? sender, EventArgs e) => _ui.Post(ReloadServers);

@@ -1,4 +1,5 @@
 using SimpleVpn.App.Services;
+using SimpleVpn.Core.Abstractions;
 using SimpleVpn.Core.Connection;
 
 namespace SimpleVpn.App.Tests;
@@ -82,4 +83,26 @@ internal sealed class FakeConnectionManager : IConnectionManager
         State = state;
         StateChanged?.Invoke(this, state);
     }
+}
+
+internal sealed class FakeElevation : IElevation
+{
+    public bool IsElevated { get; set; }
+
+    public bool Accept { get; set; }
+
+    public int RestartCalls { get; private set; }
+
+    public bool RestartElevated()
+    {
+        RestartCalls++;
+        return Accept;
+    }
+}
+
+internal sealed class FakeLifetime : IAppLifetime
+{
+    public bool ShutdownCalled { get; private set; }
+
+    public void Shutdown() => ShutdownCalled = true;
 }
