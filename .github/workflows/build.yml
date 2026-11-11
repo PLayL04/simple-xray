@@ -22,6 +22,11 @@ jobs:
         with:
           global-json-file: global.json
 
+      # Before build/test: tests validate generated configs with the real xray.exe.
+      - name: Fetch Xray core and geo files
+        shell: pwsh
+        run: ./tools/fetch-xray.ps1
+
       - name: Restore
         run: dotnet restore
 
@@ -30,10 +35,6 @@ jobs:
 
       - name: Test
         run: dotnet test --no-build -c Release
-
-      - name: Fetch Xray core and geo files
-        shell: pwsh
-        run: ./tools/fetch-xray.ps1
 
       - name: Publish (win-x64, self-contained)
         run: dotnet publish src/SimpleVpn.Desktop -c Release -r win-x64 --self-contained -o publish/SimpleVpn

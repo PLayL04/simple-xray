@@ -16,6 +16,28 @@
   <data name="Label_Server" xml:space="preserve"><value>Server</value></data>
   <data name="Label_Routing" xml:space="preserve"><value>Routing</value></data>
   <data name="Server_None" xml:space="preserve"><value>Not added</value></data>
+  <data name="Server_Add" xml:space="preserve"><value>Add server</value></data>
+  <data name="Server_Remove" xml:space="preserve"><value>Remove server</value></data>
+  <data name="Preset_Global" xml:space="preserve"><value>Everything via proxy</value></data>
   <data name="Preset_BypassRu" xml:space="preserve"><value>All except RU</value></data>
-  <data name="Dev_StubNotice" xml:space="preserve"><value>Skeleton build: connection is simulated</value></data>
+  <data name="AddServer_Title" xml:space="preserve"><value>New server</value></data>
+  <data name="AddServer_Hint" xml:space="preserve"><value>Paste the vless:// link you got from the server administrator.</value></data>
+  <data name="AddServer_Paste" xml:space="preserve"><value>Paste from clipboard</value></data>
+  <data name="AddServer_Confirm" xml:space="preserve"><value>Add</value></data>
+  <data name="Common_Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="Error_NoServer" xml:space="preserve"><value>Add a server first</value></data>
+  <data name="Error_CoreNotFound" xml:space="preserve"><value>Xray core file not found. Reinstall the app or check the antivirus quarantine.</value></data>
+  <data name="Error_GeoFilesMissing" xml:space="preserve"><value>Geo data files (geoip/geosite) not found. Reinstall the app.</value></data>
+  <data name="Error_CoreStartTimeout" xml:space="preserve"><value>Xray core did not start in time</value></data>
+  <data name="Error_CoreExited" xml:space="preserve"><value>Xray core stopped with an error. Check the server link or see the log.</value></data>
+  <data name="Error_SystemProxyFailed" xml:space="preserve"><value>Failed to enable the system proxy</value></data>
+  <data name="Error_Unexpected" xml:space="preserve"><value>Unexpected error, see the log for details</value></data>
+  <data name="LinkError_Empty" xml:space="preserve"><value>Paste a link</value></data>
+  <data name="LinkError_UnsupportedScheme" xml:space="preserve"><value>Only vless:// links are supported</value></data>
+  <data name="LinkError_Malformed" xml:space="preserve"><value>The link is damaged — copy it again in full</value></data>
+  <data name="LinkError_MissingUserId" xml:space="preserve"><value>The link has no user id</value></data>
+  <data name="LinkError_InvalidUserId" xml:space="preserve"><value>Invalid user id in the link</value></data>
+  <data name="LinkError_MissingAddress" xml:space="preserve"><value>The link has no server address</value></data>
+  <data name="LinkError_InvalidPort" xml:space="preserve"><value>Invalid server port in the link</value></data>
+  <data name="LinkError_InvalidParameter" xml:space="preserve"><value>The link contains unsupported parameters</value></data>
 </root>

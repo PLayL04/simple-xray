@@ -1,52 +1,107 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:SimpleVpn.App.ViewModels"
+             xmlns:models="using:SimpleVpn.Core.Models"
              xmlns:loc="using:SimpleVpn.App.Localization"
              x:Class="SimpleVpn.Desktop.Views.MainView"
              x:DataType="vm:MainViewModel">
-  <Grid RowDefinitions="Auto,*,Auto" Margin="20">
+  <Panel>
+    <Grid RowDefinitions="Auto,*,Auto" Margin="20">
 
-    <!-- Header -->
-    <Grid ColumnDefinitions="*,Auto">
-      <TextBlock Text="{loc:Loc AppTitle}" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" />
-      <!-- TODO(M2): open settings -->
-      <Button Grid.Column="1" Content="{loc:Loc Action_Settings}" IsEnabled="False" />
+      <!-- Header -->
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBlock Text="{loc:Loc AppTitle}" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" />
+        <!-- TODO(M2): open settings -->
+        <Button Grid.Column="1" Content="{loc:Loc Action_Settings}" IsEnabled="False" />
+      </Grid>
+
+      <!-- Power button and status -->
+      <StackPanel Grid.Row="1" VerticalAlignment="Center" Spacing="18">
+        <Button Classes="power"
+                Classes.connected="{Binding IsConnected}"
+                Command="{Binding ToggleConnectionCommand}"
+                ToolTip.Tip="{Binding ActionText}"
+                AutomationProperties.Name="{Binding ActionText}">
+          <Path Data="M 12,3 L 12,12 M 7,6 A 8,8 0 1 0 17,6"
+                Stroke="{Binding $parent[Button].Foreground}"
+                StrokeThickness="2.2"
+                StrokeLineCap="Round"
+                Width="56" Height="56"
+                Stretch="Uniform" />
+        </Button>
+        <TextBlock Text="{Binding StatusText}"
+                   Classes.error="{Binding IsError}"
+                   HorizontalAlignment="Center" FontSize="16"
+                   TextWrapping="Wrap" TextAlignment="Center" MaxWidth="320"
+                   AutomationProperties.AutomationId="StatusText" />
+        <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}" Width="120" HorizontalAlignment="Center" />
+      </StackPanel>
+
+      <!-- Current server and routing preset -->
+      <StackPanel Grid.Row="2" Spacing="8">
+        <Border Classes="card">
+          <StackPanel Spacing="4">
+            <TextBlock Classes="caption" Text="{loc:Loc Label_Server}" />
+
+            <Button IsVisible="{Binding !HasServers}"
+                    Content="{loc:Loc Server_Add}"
+                    Command="{Binding ShowAddServerCommand}"
+                    HorizontalAlignment="Stretch" />
+
+            <Grid IsVisible="{Binding HasServers}" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6">
+              <ComboBox ItemsSource="{Binding Servers}"
+                        SelectedItem="{Binding SelectedServer}"
+                        HorizontalAlignment="Stretch"
+                        AutomationProperties.Name="{loc:Loc Label_Server}">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="models:ServerProfile">
+                    <TextBlock Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+              <Button Grid.Column="1" Content="+" Width="34"
+                      Command="{Binding ShowAddServerCommand}"
+                      ToolTip.Tip="{loc:Loc Server_Add}"
+                      AutomationProperties.Name="{loc:Loc Server_Add}" />
+              <Button Grid.Column="2" Content="✕" Width="34"
+                      Command="{Binding RemoveSelectedServerCommand}"
+                      ToolTip.Tip="{loc:Loc Server_Remove}"
+                      AutomationProperties.Name="{loc:Loc Server_Remove}" />
+            </Grid>
+          </StackPanel>
+        </Border>
+        <Border Classes="card">
+          <StackPanel Spacing="2">
+            <TextBlock Classes="caption" Text="{loc:Loc Label_Routing}" />
+            <TextBlock Text="{Binding PresetName}" />
+          </StackPanel>
+        </Border>
+      </StackPanel>
     </Grid>
 
-    <!-- Power button and status -->
-    <StackPanel Grid.Row="1" VerticalAlignment="Center" Spacing="18">
-      <Button Classes="power"
-              Classes.connected="{Binding IsConnected}"
-              Command="{Binding ToggleConnectionCommand}"
-              ToolTip.Tip="{Binding ActionText}"
-              AutomationProperties.Name="{Binding ActionText}">
-        <Path Data="M 12,3 L 12,12 M 7,6 A 8,8 0 1 0 17,6"
-              Stroke="{Binding $parent[Button].Foreground}"
-              StrokeThickness="2.2"
-              StrokeLineCap="Round"
-              Width="56" Height="56"
-              Stretch="Uniform" />
-      </Button>
-      <TextBlock Text="{Binding StatusText}" HorizontalAlignment="Center" FontSize="16" TextWrapping="Wrap" TextAlignment="Center" />
-      <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}" Width="120" HorizontalAlignment="Center" />
-    </StackPanel>
-
-    <!-- Current server and routing preset -->
-    <StackPanel Grid.Row="2" Spacing="8">
-      <Border Classes="card">
-        <StackPanel Spacing="2">
-          <TextBlock Classes="caption" Text="{loc:Loc Label_Server}" />
-          <TextBlock Text="{Binding ServerName}" />
+    <!-- "Add server" panel over the main screen -->
+    <Border IsVisible="{Binding IsAddingServer}" Classes="overlay">
+      <Border Classes="dialog" VerticalAlignment="Center" Margin="16">
+        <StackPanel Spacing="12">
+          <TextBlock Text="{loc:Loc AddServer_Title}" FontSize="18" FontWeight="SemiBold" />
+          <TextBlock Text="{loc:Loc AddServer_Hint}" TextWrapping="Wrap" Classes="caption" />
+          <TextBox Text="{Binding NewLink}"
+                   PlaceholderText="vless://…"
+                   TextWrapping="Wrap" AcceptsReturn="False"
+                   MinHeight="64" MaxHeight="140"
+                   AutomationProperties.Name="{loc:Loc AddServer_Title}"
+                   AutomationProperties.AutomationId="LinkInput" />
+          <TextBlock Text="{Binding AddServerError}"
+                     IsVisible="{Binding AddServerError, Converter={x:Static ObjectConverters.IsNotNull}}"
+                     Classes="error" TextWrapping="Wrap" />
+          <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8">
+            <Button Content="{loc:Loc AddServer_Paste}" Command="{Binding PasteLinkCommand}" />
+            <Button Grid.Column="2" Content="{loc:Loc Common_Cancel}" Command="{Binding CancelAddServerCommand}" IsCancel="True" />
+            <Button Grid.Column="3" Content="{loc:Loc AddServer_Confirm}" Command="{Binding AddServerCommand}"
+                    Classes="accent" IsDefault="True" />
+          </Grid>
         </StackPanel>
       </Border>
-      <Border Classes="card">
-        <StackPanel Spacing="2">
-          <TextBlock Classes="caption" Text="{loc:Loc Label_Routing}" />
-          <TextBlock Text="{Binding PresetName}" />
-        </StackPanel>
-      </Border>
-      <!-- TODO(M1): remove together with StubConnectionManager -->
-      <TextBlock Classes="caption" Text="{loc:Loc Dev_StubNotice}" HorizontalAlignment="Center" Margin="0,4,0,0" />
-    </StackPanel>
-  </Grid>
+    </Border>
+  </Panel>
 </UserControl>

@@ -16,6 +16,28 @@
   <data name="Label_Server" xml:space="preserve"><value>Сервер</value></data>
   <data name="Label_Routing" xml:space="preserve"><value>Маршрутизация</value></data>
   <data name="Server_None" xml:space="preserve"><value>Не добавлен</value></data>
+  <data name="Server_Add" xml:space="preserve"><value>Добавить сервер</value></data>
+  <data name="Server_Remove" xml:space="preserve"><value>Удалить сервер</value></data>
+  <data name="Preset_Global" xml:space="preserve"><value>Всё через прокси</value></data>
   <data name="Preset_BypassRu" xml:space="preserve"><value>Всё, кроме RU</value></data>
-  <data name="Dev_StubNotice" xml:space="preserve"><value>Каркас: подключение пока имитируется</value></data>
+  <data name="AddServer_Title" xml:space="preserve"><value>Новый сервер</value></data>
+  <data name="AddServer_Hint" xml:space="preserve"><value>Вставьте ссылку vless://, которую прислал администратор сервера.</value></data>
+  <data name="AddServer_Paste" xml:space="preserve"><value>Вставить из буфера</value></data>
+  <data name="AddServer_Confirm" xml:space="preserve"><value>Добавить</value></data>
+  <data name="Common_Cancel" xml:space="preserve"><value>Отмена</value></data>
+  <data name="Error_NoServer" xml:space="preserve"><value>Сначала добавьте сервер</value></data>
+  <data name="Error_CoreNotFound" xml:space="preserve"><value>Не найден файл ядра Xray. Переустановите приложение или проверьте карантин антивируса.</value></data>
+  <data name="Error_GeoFilesMissing" xml:space="preserve"><value>Не найдены файлы геоданных (geoip/geosite). Переустановите приложение.</value></data>
+  <data name="Error_CoreStartTimeout" xml:space="preserve"><value>Ядро Xray не запустилось вовремя</value></data>
+  <data name="Error_CoreExited" xml:space="preserve"><value>Ядро Xray остановилось с ошибкой. Проверьте ссылку на сервер или посмотрите лог.</value></data>
+  <data name="Error_SystemProxyFailed" xml:space="preserve"><value>Не удалось включить системный прокси</value></data>
+  <data name="Error_Unexpected" xml:space="preserve"><value>Непредвиденная ошибка, подробности в логе</value></data>
+  <data name="LinkError_Empty" xml:space="preserve"><value>Вставьте ссылку</value></data>
+  <data name="LinkError_UnsupportedScheme" xml:space="preserve"><value>Поддерживаются только ссылки vless://</value></data>
+  <data name="LinkError_Malformed" xml:space="preserve"><value>Ссылка повреждена — скопируйте её целиком ещё раз</value></data>
+  <data name="LinkError_MissingUserId" xml:space="preserve"><value>В ссылке нет идентификатора пользователя</value></data>
+  <data name="LinkError_InvalidUserId" xml:space="preserve"><value>Неверный идентификатор пользователя в ссылке</value></data>
+  <data name="LinkError_MissingAddress" xml:space="preserve"><value>В ссылке нет адреса сервера</value></data>
+  <data name="LinkError_InvalidPort" xml:space="preserve"><value>Неверный порт сервера в ссылке</value></data>
+  <data name="LinkError_InvalidParameter" xml:space="preserve"><value>Ссылка содержит неподдерживаемые параметры</value></data>
 </root>

@@ -60,6 +60,16 @@ public sealed class LocalizationTests
     }
 
     [Fact]
+    public void EveryErrorCode_HasLocalizedMessage()
+    {
+        var keys = ReadResx("Strings.resx").Keys.ToHashSet();
+        var expected = Enum.GetNames<Core.Connection.ConnectionErrorCode>().Select(n => $"Error_{n}")
+            .Concat(Enum.GetNames<Core.Parsing.LinkParseError>().Select(n => $"LinkError_{n}"));
+
+        Assert.All(expected, key => Assert.Contains(key, keys));
+    }
+
+    [Fact]
     public void Get_MissingKey_ReturnsMarkerInsteadOfThrowing()
     {
         Assert.Equal("[No_Such_Key]", Loc.Get("No_Such_Key"));

@@ -8,13 +8,17 @@ public interface IConnectionManager
 {
     ConnectionState State { get; }
 
-    /// <summary>User-presentable reason of the last failure, if <see cref="State"/> is <see cref="ConnectionState.Error"/>.</summary>
-    string? LastError { get; }
+    /// <summary>Reason of the last failure when <see cref="State"/> is <see cref="ConnectionState.Error"/>.</summary>
+    ConnectionError? LastError { get; }
 
     /// <summary>Raised on any state change. May be raised on a background thread.</summary>
     event EventHandler<ConnectionState>? StateChanged;
 
+    /// <summary>Connects using the selected profile. Failures are reported via <see cref="State"/>, not exceptions.</summary>
     Task ConnectAsync(CancellationToken cancellationToken = default);
 
     Task DisconnectAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Reconnects if currently connected (e.g. after the selected server changed); otherwise does nothing.</summary>
+    Task ReconnectIfConnectedAsync(CancellationToken cancellationToken = default);
 }
