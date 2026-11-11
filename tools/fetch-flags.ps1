@@ -1,13 +1,13 @@
 # Downloads country flag pictures (40 px wide PNG, public domain) from flagcdn.com into
-# src/SimpleVpn.Desktop/Assets/flags. The files are committed; rerun only to refresh the set.
+# src/SimpleXray.Desktop/Assets/flags. The files are committed; rerun only to refresh the set.
 # Windows fonts cannot draw flag emoji, so the UI shows these pictures next to server names.
 param([string]$Proxy)
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
 
 $url = 'https://flagcdn.com/w40.zip'
-$out = Join-Path $PSScriptRoot '..\src\SimpleVpn.Desktop\Assets\flags'
-$tmp = Join-Path ([System.IO.Path]::GetTempPath()) ("svpn-flags-" + [guid]::NewGuid().ToString('N'))
+$out = Join-Path $PSScriptRoot '..\src\SimpleXray.Desktop\Assets\flags'
+$tmp = Join-Path ([System.IO.Path]::GetTempPath()) ("sxray-flags-" + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Force $tmp | Out-Null
 try {
     $zip = Join-Path $tmp 'w40.zip'

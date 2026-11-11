@@ -1,10 +1,10 @@
-# Generates the app and tray icons (a circle with a power glyph) into src/SimpleVpn.Desktop/Assets.
+# Generates the app and tray icons (a circle with a power glyph) into src/SimpleXray.Desktop/Assets.
 # The .ico files are committed; rerun only to change the design.
 # ICO entries are PNG-compressed (supported since Windows Vista).
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
 
-$out = Join-Path $PSScriptRoot '..\src\SimpleVpn.Desktop\Assets'
+$out = Join-Path $PSScriptRoot '..\src\SimpleXray.Desktop\Assets'
 New-Item -ItemType Directory -Force $out | Out-Null
 
 function New-Png([int]$size, [string]$color) {

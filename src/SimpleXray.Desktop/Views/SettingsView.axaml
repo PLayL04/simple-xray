@@ -1,0 +1,329 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SimpleXray.App.ViewModels"
+             xmlns:views="using:SimpleXray.Desktop.Views"
+             xmlns:loc="using:SimpleXray.App.Localization"
+             xmlns:models="using:SimpleXray.Core.Models"
+             xmlns:controls="using:SimpleXray.Desktop.Controls"
+             xmlns:desktop="using:SimpleXray.Desktop"
+             x:Class="SimpleXray.Desktop.Views.SettingsView"
+             x:DataType="vm:SettingsViewModel"
+             Background="{DynamicResource SystemRegionBrush}">
+  <Panel>
+    <!-- Settings list -->
+    <Grid RowDefinitions="Auto,*" IsVisible="{Binding IsBrowsing}">
+      <Grid ColumnDefinitions="Auto,*" Margin="12,12,20,8" ColumnSpacing="8">
+        <Button Content="←" Command="{Binding CloseCommand}" IsCancel="True"
+                ToolTip.Tip="{loc:Loc Common_Back}" AutomationProperties.Name="{loc:Loc Common_Back}" />
+        <TextBlock Grid.Column="1" Text="{loc:Loc Settings_Title}" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" />
+      </Grid>
+
+      <ScrollViewer Grid.Row="1">
+        <StackPanel Spacing="12" Margin="20,4,20,20">
+
+          <!-- Connection method (top of the hierarchy) -->
+          <Border Classes="card">
+            <StackPanel Spacing="6">
+              <TextBlock Classes="section" Text="{loc:Loc Settings_ModeSection}" />
+              <RadioButton GroupName="mode" IsChecked="{Binding IsSystemProxyMode}">
+                <StackPanel>
+                  <TextBlock Text="{loc:Loc Mode_SystemProxy}" />
+                  <TextBlock Classes="caption" Text="{loc:Loc Mode_SystemProxyHint}" TextWrapping="Wrap" />
+                </StackPanel>
+              </RadioButton>
+              <RadioButton GroupName="mode" IsChecked="{Binding IsTunMode}"
+                           AutomationProperties.AutomationId="TunModeRadio">
+                <StackPanel>
+                  <TextBlock Text="{loc:Loc Mode_Tun}" />
+                  <TextBlock Classes="caption" Text="{loc:Loc Mode_TunHint}" TextWrapping="Wrap" />
+                </StackPanel>
+              </RadioButton>
+              <CheckBox IsChecked="{Binding BlockDnsLeaks}" IsVisible="{Binding IsTunMode}" Margin="28,0,0,0">
+                <StackPanel>
+                  <TextBlock Text="{loc:Loc Tun_BlockDnsLeaks}" />
+                  <TextBlock Classes="caption" Text="{loc:Loc Tun_BlockDnsLeaksHint}" TextWrapping="Wrap" />
+                </StackPanel>
+              </CheckBox>
+            </StackPanel>
+          </Border>
+
+          <!-- Routing presets -->
+          <Border Classes="card">
+            <StackPanel Spacing="8">
+              <TextBlock Classes="section" Text="{loc:Loc Settings_RoutingSection}" />
+              <TextBlock Classes="caption" Text="{loc:Loc Settings_RoutingHint}" TextWrapping="Wrap" />
+
+              <ListBox ItemsSource="{Binding Presets}" SelectedItem="{Binding SelectedPreset}"
+                       AutomationProperties.Name="{loc:Loc Settings_RoutingSection}"
+                       Background="Transparent">
+                <ListBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:PresetItem">
+                    <Grid ColumnDefinitions="*,Auto">
+                      <StackPanel>
+                        <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Classes="caption" Text="{Binding Description}" TextTrimming="CharacterEllipsis" />
+                      </StackPanel>
+                      <Border Grid.Column="1" Classes="badge" IsVisible="{Binding IsActive}" VerticalAlignment="Center">
+                        <TextBlock Text="{loc:Loc Presets_Active}" FontSize="11" />
+                      </Border>
+                    </Grid>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+
+              <WrapPanel ItemSpacing="6" LineSpacing="6">
+                <Button Content="{loc:Loc Presets_Activate}" Command="{Binding ActivateCommand}" Classes="accent" />
+                <Button Content="{loc:Loc Presets_View}" Command="{Binding EditCommand}" />
+                <Button Content="{loc:Loc Presets_Duplicate}" Command="{Binding DuplicateCommand}" />
+                <Button Content="{loc:Loc Presets_Delete}" Command="{Binding DeleteCommand}" />
+              </WrapPanel>
+              <WrapPanel ItemSpacing="6" LineSpacing="6">
+                <Button Content="{loc:Loc Presets_ImportFile}" Command="{Binding ImportFileCommand}" />
+                <Button Content="{loc:Loc Presets_ImportUrl}" Command="{Binding ShowImportUrlCommand}" />
+                <Button Content="{loc:Loc Presets_Export}" Command="{Binding ExportCommand}" />
+                <Button Content="{loc:Loc Presets_UpdateFromSource}" Command="{Binding UpdateFromSourceCommand}"
+                        IsVisible="{Binding HasSource}" />
+              </WrapPanel>
+
+              <Border Classes="inset" IsVisible="{Binding IsConfirmingDelete}">
+                <StackPanel Spacing="8">
+                  <TextBlock Text="{loc:Loc Presets_ConfirmDelete}" TextWrapping="Wrap" />
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Button Content="{loc:Loc Presets_Delete}" Command="{Binding ConfirmDeleteCommand}" Classes="danger" />
+                    <Button Content="{loc:Loc Common_Cancel}" Command="{Binding CancelDeleteCommand}" />
+                  </StackPanel>
+                </StackPanel>
+              </Border>
+
+              <Border Classes="inset" IsVisible="{Binding IsImportingUrl}">
+                <StackPanel Spacing="8">
+                  <TextBox Text="{Binding ImportUrl}" PlaceholderText="https://…"
+                           AutomationProperties.Name="{loc:Loc Presets_ImportUrl}"
+                           AutomationProperties.AutomationId="PresetUrlInput" />
+                  <TextBlock Classes="caption" Text="{loc:Loc Presets_ImportUrlHint}" TextWrapping="Wrap" />
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Button Content="{loc:Loc Presets_Import}" Command="{Binding ImportUrlCommand}" Classes="accent" />
+                    <Button Content="{loc:Loc Common_Cancel}" Command="{Binding CancelImportUrlCommand}" />
+                  </StackPanel>
+                </StackPanel>
+              </Border>
+
+              <TextBlock Text="{Binding PresetMessage}" TextWrapping="Wrap"
+                         IsVisible="{Binding PresetMessage, Converter={x:Static ObjectConverters.IsNotNull}}"
+                         Classes.error="{Binding IsPresetMessageError}"
+                         AutomationProperties.AutomationId="PresetMessage" />
+            </StackPanel>
+          </Border>
+
+          <!-- Geo databases -->
+          <Border Classes="card" DataContext="{Binding Geo}">
+            <StackPanel Spacing="6" x:DataType="vm:GeoSettingsViewModel">
+              <TextBlock Classes="section" Text="{loc:Loc Geo_Section}" />
+              <TextBlock Classes="caption" Text="{loc:Loc Geo_Hint}" TextWrapping="Wrap" />
+              <TextBlock Text="{Binding LastUpdateText}" TextWrapping="Wrap" AutomationProperties.AutomationId="GeoLastUpdate" />
+              <TextBlock Classes="caption" Text="{Binding LastCheckText}"
+                         IsVisible="{Binding LastCheckText, Converter={x:Static ObjectConverters.IsNotNull}}" />
+              <ProgressBar Value="{Binding ProgressPercent}" Maximum="100" IsVisible="{Binding HasProgress}" />
+              <TextBlock Text="{Binding ResultText}" TextWrapping="Wrap" Classes.error="{Binding IsError}"
+                         IsVisible="{Binding ResultText, Converter={x:Static ObjectConverters.IsNotNull}}"
+                         AutomationProperties.AutomationId="GeoResult" />
+              <Button Content="{loc:Loc Geo_UpdateNow}" Command="{Binding UpdateNowCommand}" IsEnabled="{Binding IsIdle}" />
+
+              <CheckBox IsChecked="{Binding AutoUpdate}" Content="{loc:Loc Geo_AutoUpdate}" />
+              <ComboBox SelectedIndex="{Binding IntervalIndex}" IsEnabled="{Binding AutoUpdate}" HorizontalAlignment="Stretch"
+                        AutomationProperties.Name="{loc:Loc Geo_AutoUpdate}">
+                <ComboBoxItem Content="{loc:Loc Interval_6}" />
+                <ComboBoxItem Content="{loc:Loc Interval_12}" />
+                <ComboBoxItem Content="{loc:Loc Interval_24}" />
+                <ComboBoxItem Content="{loc:Loc Interval_72}" />
+                <ComboBoxItem Content="{loc:Loc Interval_168}" />
+              </ComboBox>
+
+              <TextBlock Classes="caption" Text="{loc:Loc Geo_Source}" Margin="0,4,0,0" />
+              <RadioButton GroupName="geoSource" IsChecked="{Binding UseDefaultSource}" Content="{loc:Loc Geo_SourceDefault}" />
+              <RadioButton GroupName="geoSource" IsChecked="{Binding UseCustomSource}" Content="{loc:Loc Geo_SourceCustom}" />
+              <StackPanel Spacing="6" IsVisible="{Binding UseCustomSource}">
+                <TextBox Text="{Binding CustomGeoipUrl}" PlaceholderText="{loc:Loc Geo_GeoipUrl}"
+                         AutomationProperties.Name="{loc:Loc Geo_GeoipUrl}" />
+                <TextBox Text="{Binding CustomGeositeUrl}" PlaceholderText="{loc:Loc Geo_GeositeUrl}"
+                         AutomationProperties.Name="{loc:Loc Geo_GeositeUrl}" />
+                <TextBlock Classes="caption" Text="{loc:Loc Geo_CustomHint}" TextWrapping="Wrap" />
+                <Button Content="{loc:Loc Geo_SaveSource}" Command="{Binding SaveSourceCommand}" />
+              </StackPanel>
+              <TextBlock Text="{Binding SourceMessage}" TextWrapping="Wrap" Classes.error="{Binding IsSourceMessageError}"
+                         IsVisible="{Binding SourceMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            </StackPanel>
+          </Border>
+
+          <!-- Servers -->
+          <Border Classes="card" DataContext="{Binding Servers}">
+            <StackPanel Spacing="8">
+              <TextBlock Classes="section" Text="{loc:Loc Servers_Section}" />
+              <TextBlock Classes="caption" Text="{loc:Loc Servers_Empty}" IsVisible="{Binding !HasServers}" />
+              <ListBox ItemsSource="{Binding Servers}" SelectedItem="{Binding Selected}"
+                       IsVisible="{Binding HasServers}" Background="Transparent"
+                       AutomationProperties.Name="{loc:Loc Servers_Section}">
+                <ListBox.ItemTemplate>
+                  <DataTemplate x:DataType="models:ServerProfile">
+                    <StackPanel>
+                      <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Image Source="{Binding Country, Converter={x:Static desktop:ServerFlags.Converter}}"
+                               Width="20" Height="14" Stretch="Uniform" VerticalAlignment="Center"
+                               IsVisible="{Binding Country, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                        <TextBlock Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                      </StackPanel>
+                      <TextBlock Classes="caption" Text="{Binding Address}" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+              <WrapPanel ItemSpacing="6" LineSpacing="6" IsVisible="{Binding HasServers}">
+                <Button Content="{loc:Loc Servers_ShowQr}" Command="{Binding ShowQrCommand}" />
+                <Button Content="{loc:Loc Servers_CopyLink}" Command="{Binding CopyLinkCommand}" />
+                <Button Content="{loc:Loc Servers_Rename}" Command="{Binding StartRenameCommand}" />
+                <Button Content="{loc:Loc Servers_Delete}" Command="{Binding DeleteCommand}" />
+              </WrapPanel>
+
+              <Border Classes="inset" IsVisible="{Binding IsRenaming}">
+                <StackPanel Spacing="8">
+                  <TextBox Text="{Binding RenameText}" AutomationProperties.Name="{loc:Loc Servers_Rename}"
+                           AutomationProperties.AutomationId="RenameInput" />
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Button Content="{loc:Loc Common_Save}" Command="{Binding SaveRenameCommand}" Classes="accent" />
+                    <Button Content="{loc:Loc Common_Cancel}" Command="{Binding CancelRenameCommand}" />
+                  </StackPanel>
+                </StackPanel>
+              </Border>
+
+              <Border Classes="inset" IsVisible="{Binding IsConfirmingDelete}">
+                <StackPanel Spacing="8">
+                  <TextBlock Text="{loc:Loc Servers_ConfirmDelete}" TextWrapping="Wrap" />
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Button Content="{loc:Loc Servers_Delete}" Command="{Binding ConfirmDeleteCommand}" Classes="danger" />
+                    <Button Content="{loc:Loc Common_Cancel}" Command="{Binding CancelDeleteCommand}" />
+                  </StackPanel>
+                </StackPanel>
+              </Border>
+
+              <TextBlock Text="{Binding Message}" TextWrapping="Wrap"
+                         IsVisible="{Binding Message, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            </StackPanel>
+          </Border>
+
+          <!-- General -->
+          <Border Classes="card">
+            <StackPanel Spacing="6">
+              <TextBlock Classes="section" Text="{loc:Loc Settings_GeneralSection}" />
+              <TextBlock Classes="caption" Text="{loc:Loc Settings_Language}" />
+              <ComboBox SelectedIndex="{Binding LanguageIndex}" HorizontalAlignment="Stretch"
+                        AutomationProperties.Name="{loc:Loc Settings_Language}">
+                <ComboBoxItem Content="{loc:Loc Language_System}" />
+                <ComboBoxItem Content="{loc:Loc Language_Ru}" />
+                <ComboBoxItem Content="{loc:Loc Language_En}" />
+              </ComboBox>
+              <TextBlock Classes="caption" Text="{loc:Loc Settings_LanguageRestart}" IsVisible="{Binding IsLanguageChanged}" TextWrapping="Wrap" />
+              <CheckBox IsChecked="{Binding Autostart}" AutomationProperties.AutomationId="AutostartCheck">
+                <StackPanel>
+                  <TextBlock Text="{loc:Loc Settings_Autostart}" />
+                  <TextBlock Classes="caption" Text="{loc:Loc Settings_AutostartHint}" TextWrapping="Wrap" />
+                </StackPanel>
+              </CheckBox>
+              <CheckBox IsChecked="{Binding ConnectOnStart}" AutomationProperties.AutomationId="ConnectOnStartCheck">
+                <TextBlock Text="{loc:Loc Settings_ConnectOnStart}" />
+              </CheckBox>
+            </StackPanel>
+          </Border>
+
+          <!-- Advanced -->
+          <Expander Header="{loc:Loc Settings_AdvancedSection}" HorizontalAlignment="Stretch">
+            <StackPanel Spacing="6">
+              <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                <StackPanel Spacing="4">
+                  <TextBlock Classes="caption" Text="{loc:Loc Settings_SocksPort}" />
+                  <NumericUpDown Value="{Binding SocksPort}" Minimum="1024" Maximum="65535" Increment="1" FormatString="0"
+                                 AutomationProperties.Name="{loc:Loc Settings_SocksPort}" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Spacing="4">
+                  <TextBlock Classes="caption" Text="{loc:Loc Settings_HttpPort}" />
+                  <NumericUpDown Value="{Binding HttpPort}" Minimum="1024" Maximum="65535" Increment="1" FormatString="0"
+                                 AutomationProperties.Name="{loc:Loc Settings_HttpPort}" />
+                </StackPanel>
+              </Grid>
+              <TextBlock Classes="caption" Text="{loc:Loc Settings_RemoteDns}" />
+              <TextBox Text="{Binding RemoteDns}" AutomationProperties.Name="{loc:Loc Settings_RemoteDns}" />
+              <TextBlock Classes="caption" Text="{loc:Loc Settings_DirectDns}" TextWrapping="Wrap" />
+              <TextBox Text="{Binding DirectDns}" AutomationProperties.Name="{loc:Loc Settings_DirectDns}" />
+              <CheckBox IsChecked="{Binding PreferIPv4}" Content="{loc:Loc Settings_PreferIPv4}" />
+              <TextBlock Classes="caption" Text="{loc:Loc Settings_LogLevel}" />
+              <ComboBox SelectedIndex="{Binding LogLevelIndex}" HorizontalAlignment="Stretch"
+                        AutomationProperties.Name="{loc:Loc Settings_LogLevel}">
+                <ComboBoxItem Content="debug" />
+                <ComboBoxItem Content="info" />
+                <ComboBoxItem Content="warning" />
+                <ComboBoxItem Content="error" />
+                <ComboBoxItem Content="none" />
+              </ComboBox>
+              <TextBlock Text="{Binding AdvancedMessage}" TextWrapping="Wrap"
+                         IsVisible="{Binding AdvancedMessage, Converter={x:Static ObjectConverters.IsNotNull}}"
+                         Classes.error="{Binding IsAdvancedMessageError}" />
+              <WrapPanel ItemSpacing="6" LineSpacing="6">
+                <Button Content="{loc:Loc Settings_Apply}" Command="{Binding ApplyAdvancedCommand}" Classes="accent" />
+                <Button Content="{loc:Loc Settings_Reset}" Command="{Binding ResetAdvancedCommand}" />
+                <Button Content="{loc:Loc Log_Show}" Command="{Binding Log.OpenCommand}" />
+              </WrapPanel>
+            </StackPanel>
+          </Expander>
+
+          <TextBlock Classes="caption" Text="{x:Static vm:SettingsViewModel.VersionText}" HorizontalAlignment="Center" />
+        </StackPanel>
+      </ScrollViewer>
+    </Grid>
+
+    <!-- Server link as a QR code -->
+    <Panel IsVisible="{Binding Servers.IsQrOpen}">
+      <Border Classes="overlay" DataContext="{Binding Servers}">
+        <Border Classes="dialog" VerticalAlignment="Center" Margin="16">
+          <StackPanel Spacing="12">
+            <TextBlock Text="{Binding QrTitle}" FontSize="18" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+            <controls:QrCodeView Matrix="{Binding Qr}" Width="280" Height="280" HorizontalAlignment="Center"
+                                 AutomationProperties.AutomationId="ServerQr" />
+            <TextBlock Classes="caption" Text="{loc:Loc Servers_QrHint}" TextWrapping="Wrap" />
+            <Button Content="{loc:Loc Common_Close}" Command="{Binding CloseQrCommand}"
+                    Classes="accent" HorizontalAlignment="Stretch" IsDefault="True" IsCancel="True" />
+          </StackPanel>
+        </Border>
+      </Border>
+    </Panel>
+
+    <!-- Log (sub-page) -->
+    <Panel IsVisible="{Binding Log.IsOpen}">
+      <Grid RowDefinitions="Auto,Auto,*,Auto" DataContext="{Binding Log}" Background="{DynamicResource SystemRegionBrush}">
+        <Grid ColumnDefinitions="Auto,*" Margin="12,12,20,8" ColumnSpacing="8">
+          <Button Content="←" Command="{Binding CloseCommand}" IsCancel="True"
+                  ToolTip.Tip="{loc:Loc Common_Back}" AutomationProperties.Name="{loc:Loc Common_Back}" />
+          <TextBlock Grid.Column="1" Text="{loc:Loc Log_Title}" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" />
+        </Grid>
+        <StackPanel Grid.Row="1" Margin="20,0,20,8" Spacing="6">
+          <TextBlock Classes="caption" Text="{loc:Loc Log_Hint}" TextWrapping="Wrap" />
+          <WrapPanel ItemSpacing="6" LineSpacing="6">
+            <Button Content="{loc:Loc Log_Refresh}" Command="{Binding RefreshCommand}" />
+            <Button Content="{loc:Loc Log_Copy}" Command="{Binding CopyCommand}" Classes="accent" />
+            <Button Content="{loc:Loc Settings_OpenLogs}" Command="{Binding OpenFolderCommand}" />
+          </WrapPanel>
+          <CheckBox IsChecked="{Binding ShowPrevious}" Content="{loc:Loc Log_Previous}" />
+        </StackPanel>
+        <TextBox Grid.Row="2" Margin="20,0,20,12" Text="{Binding Text}" IsReadOnly="True"
+                 FontFamily="Consolas,monospace" FontSize="11" TextWrapping="NoWrap" AcceptsReturn="True"
+                 ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto"
+                 AutomationProperties.AutomationId="LogText" />
+        <TextBlock Grid.Row="3" Margin="20,6,20,12" Text="{Binding Message}"
+                   IsVisible="{Binding Message, Converter={x:Static ObjectConverters.IsNotNull}}" />
+      </Grid>
+    </Panel>
+
+    <!-- Preset editor (sub-page) -->
+    <Panel IsVisible="{Binding IsEditing}">
+      <views:PresetEditorView DataContext="{Binding Editor}" />
+    </Panel>
+  </Panel>
+</UserControl>

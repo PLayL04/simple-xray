@@ -1,6 +1,6 @@
-# SimpleVpn — концепция и архитектура
+# SimpleXray — концепция и архитектура
 
-> Рабочее название: **SimpleVpn**. Статус: M0–M5 готовы (2026-11-11), далее M6.
+> Название: **SimpleXray** (до 0.1.1 — SimpleVpn). Статус: M0–M5 готовы (2026-11-11), далее M6.
 
 ## 1. Что это за приложение
 
@@ -80,7 +80,7 @@
 
 ```
 ┌──────────────────────────────────┐
-│  SimpleVpn                 ⚙     │
+│  SimpleXray                 ⚙     │
 │                                  │
 │            ╭──────╮              │
 │            │  ⏻   │  ← одна кнопка│
@@ -128,7 +128,7 @@
 
 ### 3.3 Android (позже)
 
-Те же ViewModel из `SimpleVpn.App`, отдельные View, адаптированные под сенсорный экран: нижняя навигация, крупные элементы. Вместо выбора «прокси / TUN» на Android всегда VpnService. Per-app на Android — через встроенный механизм VpnService (allowed/disallowed apps).
+Те же ViewModel из `SimpleXray.App`, отдельные View, адаптированные под сенсорный экран: нижняя навигация, крупные элементы. Вместо выбора «прокси / TUN» на Android всегда VpnService. Per-app на Android — через встроенный механизм VpnService (allowed/disallowed apps).
 
 ## 4. Режимы подключения (Windows)
 
@@ -146,12 +146,12 @@
 ### 4.2 VPN (TUN)
 
 - Используется `tun` inbound Xray (`wintun.dll` рядом с `xray.exe`). Ключи сверены с исходниками v26.11.9:
-  - `name: "SimpleVpn"`, `mtu: 1500`, `gateway: ["172.19.0.1/30", "fdfe:dcba:9876::1/126"]`, `dns: ["172.19.0.2"]`;
+  - `name: "SimpleXray"`, `mtu: 1500`, `gateway: ["172.19.0.1/30", "fdfe:dcba:9876::1/126"]`, `dns: ["172.19.0.2"]`;
   - `autoSystemRoutingTable: ["0.0.0.0/0", "::/0"]` — Xray сам ставит маршруты и снимает их при выходе;
   - `autoOutboundsInterface: "auto"` — собственные сокеты Xray привязываются к физическому интерфейсу, поэтому петли нет;
   - `autoSystemWfpBlockLeak: ["dns"]` (настройка «Блокировать утечки DNS», по умолчанию вкл.) — WFP-фильтры в динамической сессии, исчезают вместе с процессом.
 - Inbound'ы SOCKS/HTTP остаются (нужны загрузчику geo через прокси), системный прокси в TUN-режиме **не трогается**.
-- Успех подключения — когда адаптер `SimpleVpn` появился в системе и поднят (`INetworkProbe.WaitForInterfaceAsync`). Иначе `TunFailed` (или `CoreExited`, если ядро упало), ядро останавливается.
+- Успех подключения — когда адаптер `SimpleXray` появился в системе и поднят (`INetworkProbe.WaitForInterfaceAsync`). Иначе `TunFailed` (или `CoreExited`, если ядро упало), ядро останавливается.
 - **Права:** приложение запускается без прав администратора (`asInvoker`). `ConnectionManager` без прав сразу возвращает `ElevationRequired`, не запуская ядро. Главный экран показывает диалог: «Перезапустить от администратора» (`runas` с `--connect --elevated-restart`, остальные аргументы вроде `--lang` пробрасываются), «Подключить через прокси» (переключает режим и подключается) или «Отмена». Отказ в UAC оставляет диалог с пояснением. Новый экземпляр с `--elevated-restart` ждёт до 15 с, пока старый освободит mutex, а `--connect` подключает сразу после показа окна. Опции «Всегда запускать от администратора» нет: автозапуск идёт через реестр Run без прав (решение M5).
 - Ограничение: если обычный пользователь вводит в UAC учётку другого администратора, повышенный экземпляр работает под другим профилем (другой `%APPDATA%`, без серверов). Портативный режим это не затрагивает.
 - Переключение режима при подключении: `ReconnectIfConnectedAsync` видит смену режима, полностью откатывает старый (включая системный прокси) и подключается заново.
@@ -265,12 +265,12 @@
 ## 8. Структура решения
 
 ```
-simple-vpn-client/
+simple-xray-client/
 ├── CLAUDE.md
 ├── docs/ARCHITECTURE.md
-├── SimpleVpn.slnx
+├── SimpleXray.slnx
 ├── src/
-│   ├── SimpleVpn.Core/          # net10.0, без UI и без Windows API
+│   ├── SimpleXray.Core/          # net10.0, без UI и без Windows API
 │   │   ├── Models/              # ServerProfile, AppSettings (+ DnsSettings, ConnectionMode), RuntimeState
 │   │   ├── Parsing/             # VlessLinkParser (+ экспорт обратно в ссылку)
 │   │   ├── Xray/                # XrayConfigBuilder (профиль + пресет + режим → JSON)
@@ -281,13 +281,13 @@ simple-vpn-client/
 │   │   ├── Storage/             # JSON-хранилище, миграции версий схемы
 │   │   ├── Connection/          # ConnectionManager — машина состояний подключения
 │   │   └── Abstractions/        # ICoreRunner, ISystemProxy, IElevation, IPlatformPaths, IClipboard
-│   ├── SimpleVpn.App/           # Avalonia-библиотека без Application: ViewModels, стили, локализация
-│   ├── SimpleVpn.Desktop/       # net10.0-windows: точка входа, Views для десктопа,
+│   ├── SimpleXray.App/           # Avalonia-библиотека без Application: ViewModels, стили, локализация
+│   ├── SimpleXray.Desktop/       # net10.0-windows: точка входа, Views для десктопа,
 │   │                            #   XrayProcessRunner, WinInetSystemProxy, UAC, трей, Job Object
-│   └── SimpleVpn.Android/       # (позже) .NET for Android: Views для телефона, VpnService
+│   └── SimpleXray.Android/       # (позже) .NET for Android: Views для телефона, VpnService
 ├── tests/
-│   ├── SimpleVpn.Core.Tests/    # парсер ссылок, генератор конфига (golden-файлы), пресеты
-│   └── SimpleVpn.App.Tests/     # локализация, ViewModels
+│   ├── SimpleXray.Core.Tests/    # парсер ссылок, генератор конфига (golden-файлы), пресеты
+│   └── SimpleXray.App.Tests/     # локализация, ViewModels
 ├── tools/
 │   ├── xray-version.txt
 │   └── fetch-xray.ps1           # скачивает xray.exe, wintun.dll и начальные geo-файлы
@@ -312,8 +312,8 @@ UI (кнопка) → ConnectionManager.ConnectAsync()
 
 | Что | Где |
 |---|---|
-| Настройки, профили, пользовательские пресеты | `%APPDATA%\SimpleVpn\` (`settings.json`, `profiles.json`, `presets\`) |
-| Geo-файлы, сгенерированный конфиг, логи, `state.json` | `%LOCALAPPDATA%\SimpleVpn\` |
+| Настройки, профили, пользовательские пресеты | `%APPDATA%\SimpleXray\` (`settings.json`, `profiles.json`, `presets\`) |
+| Geo-файлы, сгенерированный конфиг, логи, `state.json` | `%LOCALAPPDATA%\SimpleXray\` |
 | Бинарники (xray.exe, wintun.dll) | рядом с приложением (`core\`) |
 
 Режим portable: если рядом с exe лежит файл `portable`, всё хранится в `.\data\`.
@@ -343,7 +343,7 @@ UUID в профилях — секрет: в логи не пишется. Acce
 - **Завершение сеанса Windows при подключении** решено в M5: `ShutdownRequested` (WM_QUERYENDSESSION) синхронно отключает и восстанавливает прокси. Проверено отправкой WM_QUERYENDSESSION/WM_ENDSESSION окнам процесса. Если процесс всё же убьют раньше, остаётся восстановление при следующем запуске (флаг в `state.json`).
 - **Неподписанный exe:** SmartScreen и антивирус. Первый запуск только что распакованного архива может занять больше минуты (проверка антивирусом). README.txt в архиве объясняет «Подробнее → Выполнить в любом случае».
 - **Размер сборки** ~240 МБ (из них geo ~105 МБ, Xray ~35 МБ). Позже: триминг .NET, архив для раздачи, возможно — не класть geo в сборку, а качать при первом запуске.
-- **Финальное название** приложения.
+- **Название — SimpleXray** (до 0.1.1 включительно — SimpleVpn; репозиторий https://github.com/PLayL04/simple-xray-client). При переименовании сменились exe, папки данных в `%APPDATA%`/`%LOCALAPPDATA%`, mutex и имя значения автозапуска. Старое значение `SimpleVpn` в `HKCU\...\Run` при старте удаляется, а если оно указывало на эту же папку (или на несуществующий exe) — для этой папки автозапуск переносится под новым именем (`WindowsAutostart.MigrateLegacyEntry`). Данные старой версии не переносятся: в portable-режиме папку `data` можно скопировать вручную.
 
 ## Источники
 

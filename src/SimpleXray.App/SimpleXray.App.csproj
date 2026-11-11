@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>SimpleXray.App</RootNamespace>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Themes.Fluent" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\SimpleXray.Core\SimpleXray.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="SimpleXray.App.Tests" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,131 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SimpleXray.App.ViewModels"
+             xmlns:loc="using:SimpleXray.App.Localization"
+             x:Class="SimpleXray.Desktop.Views.PresetEditorView"
+             x:DataType="vm:PresetEditorViewModel"
+             Background="{DynamicResource SystemRegionBrush}">
+  <Grid RowDefinitions="Auto,*,Auto">
+    <Grid ColumnDefinitions="Auto,*,Auto" Margin="12,12,20,8" ColumnSpacing="8">
+      <Button Content="←" Command="{Binding CancelCommand}"
+              ToolTip.Tip="{loc:Loc Common_Back}" AutomationProperties.Name="{loc:Loc Common_Back}" />
+      <TextBlock Grid.Column="1" Text="{Binding Title}" FontSize="18" FontWeight="SemiBold"
+                 VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+      <Button Grid.Column="2" Content="{Binding JsonToggleText}" Command="{Binding ToggleJsonCommand}" />
+    </Grid>
+
+    <!-- Form mode -->
+    <ScrollViewer Grid.Row="1" IsVisible="{Binding IsFormMode}">
+      <StackPanel Spacing="10" Margin="20,4,20,12">
+        <StackPanel Spacing="4">
+          <TextBlock Classes="caption" Text="{loc:Loc Editor_Name}" />
+          <TextBox Text="{Binding Name}" IsReadOnly="{Binding IsReadOnly}"
+                   AutomationProperties.Name="{loc:Loc Editor_Name}" AutomationProperties.AutomationId="PresetName" />
+        </StackPanel>
+        <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+          <StackPanel Spacing="4">
+            <TextBlock Classes="caption" Text="{loc:Loc Editor_Default}" />
+            <ComboBox SelectedIndex="{Binding DefaultOutboundIndex}" IsEnabled="{Binding IsEditable}" HorizontalAlignment="Stretch"
+                      AutomationProperties.Name="{loc:Loc Editor_Default}">
+              <ComboBoxItem Content="{loc:Loc Outbound_Proxy}" />
+              <ComboBoxItem Content="{loc:Loc Outbound_Direct}" />
+              <ComboBoxItem Content="{loc:Loc Outbound_Block}" />
+            </ComboBox>
+          </StackPanel>
+          <StackPanel Grid.Column="1" Spacing="4">
+            <TextBlock Classes="caption" Text="{loc:Loc Editor_DomainStrategy}" TextTrimming="CharacterEllipsis" />
+            <ComboBox SelectedIndex="{Binding DomainStrategyIndex}" IsEnabled="{Binding IsEditable}" HorizontalAlignment="Stretch"
+                      AutomationProperties.Name="{loc:Loc Editor_DomainStrategy}">
+              <ComboBoxItem Content="{loc:Loc Strategy_AsIs}" />
+              <ComboBoxItem Content="{loc:Loc Strategy_IPIfNonMatch}" />
+              <ComboBoxItem Content="{loc:Loc Strategy_IPOnDemand}" />
+            </ComboBox>
+          </StackPanel>
+        </Grid>
+
+        <TextBlock Classes="section" Text="{loc:Loc Editor_Rules}" TextWrapping="Wrap" />
+        <TextBlock Classes="caption" Text="{loc:Loc Editor_Hint}" TextWrapping="Wrap" />
+
+        <ItemsControl ItemsSource="{Binding Rules}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <StackPanel Spacing="8" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:RuleEditorViewModel">
+              <Border Classes="card">
+                <StackPanel Spacing="6">
+                  <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="4">
+                    <CheckBox IsChecked="{Binding Enabled}" IsEnabled="{Binding IsEditable}" FontWeight="SemiBold"
+                              Content="{Binding Header}" ToolTip.Tip="{loc:Loc Editor_RuleEnabled}" />
+                    <Button Grid.Column="1" Content="↑" Command="{Binding MoveUpCommand}" IsVisible="{Binding IsEditable}"
+                            ToolTip.Tip="{loc:Loc Editor_MoveUp}" AutomationProperties.Name="{loc:Loc Editor_MoveUp}" />
+                    <Button Grid.Column="2" Content="↓" Command="{Binding MoveDownCommand}" IsVisible="{Binding IsEditable}"
+                            ToolTip.Tip="{loc:Loc Editor_MoveDown}" AutomationProperties.Name="{loc:Loc Editor_MoveDown}" />
+                    <Button Grid.Column="3" Content="✕" Command="{Binding RemoveCommand}" IsVisible="{Binding IsEditable}"
+                            ToolTip.Tip="{loc:Loc Editor_RemoveRule}" AutomationProperties.Name="{loc:Loc Editor_RemoveRule}" />
+                  </Grid>
+                  <TextBox Text="{Binding Name}" PlaceholderText="{loc:Loc Editor_RuleName}" IsReadOnly="{Binding !IsEditable}" />
+
+                  <TextBlock Classes="caption" Text="{loc:Loc Editor_Domains}" TextWrapping="Wrap" />
+                  <TextBox Text="{Binding Domains}" AcceptsReturn="True" TextWrapping="NoWrap" MinHeight="48" MaxHeight="160"
+                           IsReadOnly="{Binding !IsEditable}" FontFamily="Consolas,monospace" />
+                  <TextBlock Classes="caption" Text="{loc:Loc Editor_Ips}" TextWrapping="Wrap" />
+                  <TextBox Text="{Binding Ips}" AcceptsReturn="True" TextWrapping="NoWrap" MinHeight="48" MaxHeight="160"
+                           IsReadOnly="{Binding !IsEditable}" FontFamily="Consolas,monospace" />
+
+                  <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                    <StackPanel Spacing="4">
+                      <TextBlock Classes="caption" Text="{loc:Loc Editor_Port}" TextTrimming="CharacterEllipsis" />
+                      <TextBox Text="{Binding Port}" IsReadOnly="{Binding !IsEditable}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Spacing="4">
+                      <TextBlock Classes="caption" Text="{loc:Loc Editor_Network}" />
+                      <ComboBox SelectedIndex="{Binding NetworkIndex}" IsEnabled="{Binding IsEditable}" HorizontalAlignment="Stretch">
+                        <ComboBoxItem Content="{loc:Loc Network_Any}" />
+                        <ComboBoxItem Content="TCP" />
+                        <ComboBoxItem Content="UDP" />
+                      </ComboBox>
+                    </StackPanel>
+                  </Grid>
+                  <TextBlock Classes="caption" Text="{loc:Loc Editor_Protocols}" TextWrapping="Wrap" />
+                  <TextBox Text="{Binding Protocols}" IsReadOnly="{Binding !IsEditable}" />
+
+                  <TextBlock Classes="caption" Text="{loc:Loc Editor_Target}" />
+                  <ComboBox SelectedIndex="{Binding OutboundIndex}" IsEnabled="{Binding IsEditable}" HorizontalAlignment="Stretch">
+                    <ComboBoxItem Content="{loc:Loc Outbound_Proxy}" />
+                    <ComboBoxItem Content="{loc:Loc Outbound_Direct}" />
+                    <ComboBoxItem Content="{loc:Loc Outbound_Block}" />
+                  </ComboBox>
+                </StackPanel>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <Button Content="{loc:Loc Editor_AddRule}" Command="{Binding AddRuleCommand}" IsVisible="{Binding IsEditable}"
+                HorizontalAlignment="Stretch" />
+      </StackPanel>
+    </ScrollViewer>
+
+    <!-- Raw JSON mode -->
+    <TextBox Grid.Row="1" IsVisible="{Binding IsJsonMode}" Margin="20,4,20,12"
+             Text="{Binding JsonText}" AcceptsReturn="True" TextWrapping="NoWrap"
+             IsReadOnly="{Binding IsReadOnly}" FontFamily="Consolas,monospace" FontSize="12"
+             ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto"
+             AutomationProperties.AutomationId="PresetJson" />
+
+    <!-- Footer -->
+    <StackPanel Grid.Row="2" Spacing="8" Margin="20,0,20,16">
+      <TextBlock Text="{Binding Error}" Classes="error" TextWrapping="Wrap"
+                 IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}"
+                 AutomationProperties.AutomationId="EditorError" />
+      <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+        <Button Grid.Column="1" Content="{loc:Loc Common_Cancel}" Command="{Binding CancelCommand}" />
+        <Button Grid.Column="2" Content="{loc:Loc Common_Save}" Command="{Binding SaveCommand}" Classes="accent"
+                IsVisible="{Binding IsEditable}" />
+      </Grid>
+    </StackPanel>
+  </Grid>
+</UserControl>

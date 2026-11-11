@@ -1,0 +1,12 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="using:SimpleXray.Desktop.Views"
+        xmlns:loc="using:SimpleXray.App.Localization"
+        x:Class="SimpleXray.Desktop.Views.MainWindow"
+        Title="{loc:Loc AppTitle}"
+        Icon="avares://SimpleXray/Assets/app.ico"
+        Width="420" Height="660"
+        MinWidth="360" MinHeight="520"
+        WindowStartupLocation="CenterScreen">
+  <views:MainView />
+</Window>

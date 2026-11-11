@@ -8,7 +8,7 @@
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <Deterministic>true</Deterministic>
 
-    <Product>SimpleVpn</Product>
+    <Product>SimpleXray</Product>
     <Version>0.1.1</Version>
     <NeutralLanguage>ru</NeutralLanguage>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>

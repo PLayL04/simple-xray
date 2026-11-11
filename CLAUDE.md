@@ -4,7 +4,7 @@
 
 ## Проект
 
-**SimpleVpn** (рабочее название) — простой клиент для прокси на Xray (VLESS, в первую очередь VLESS + XHTTP + TLS; сервер — 3x-ui).
+**SimpleXray** (до 0.1.1 — SimpleVpn; репозиторий https://github.com/PLayL04/simple-xray-client) — простой клиент для прокси на Xray (VLESS, в первую очередь VLESS + XHTTP + TLS; сервер — 3x-ui).
 Цель: интерфейс простой, как у Amnezia VPN (одна кнопка «Подключить»), при гибкости v2rayN (пресеты маршрутизации, автообновление geo-баз, режим системного прокси или TUN).
 Пользователи — нетехнические друзья администратора сервера.
 
@@ -47,7 +47,7 @@ M4 (механика проверена вживую с правами адми�
 ## Структура
 
 ```
-src/SimpleVpn.Core      net10.0, без UI и без Windows API, TreatWarningsAsErrors:
+src/SimpleXray.Core      net10.0, без UI и без Windows API, TreatWarningsAsErrors:
   Models/               ServerProfile, AppSettings (+ DnsSettings, ConnectionMode), SystemProxySettings, RuntimeState, ProfilesDocument
   Routing/              RoutingPreset/RoutingRule, BuiltInPresets (Presets/*.json — встроенные ресурсы), PresetRepository,
                         PresetValidator, PresetSerializer, PresetException + PresetError
@@ -61,24 +61,24 @@ src/SimpleVpn.Core      net10.0, без UI и без Windows API, TreatWarningsA
                         JsonFile (атомарная запись), CoreJsonContext (source-gen)
   Connection/           ConnectionManager (+ IConnectionManager, ConnectionError/Code), LoopbackNetworkProbe
   Abstractions/         ICoreRunner, ISystemProxy, INetworkProbe, IElevation — реализуются платформой
-src/SimpleVpn.App       Avalonia-библиотека без Application: ViewModels (Main, Settings, GeoSettings, ServerList, LogViewer, PresetEditor, PresetItem),
+src/SimpleXray.App       Avalonia-библиотека без Application: ViewModels (Main, Settings, GeoSettings, ServerList, LogViewer, PresetEditor, PresetItem),
                         Services (IClipboardService, IUiDispatcher, IFileService, IScreenCapture, IAutostart, IAppLifetime, StartupOptions),
                         Styles/Theme.axaml, Localization (Strings.resx = RU, Strings.en.resx = EN)
-src/SimpleVpn.Desktop   net10.0-windows WinExe (SimpleVpn.exe): Program (DI, восстановление после сбоя, запуск GeoUpdateScheduler),
+src/SimpleXray.Desktop   net10.0-windows WinExe (SimpleXray.exe): Program (DI, восстановление после сбоя, запуск GeoUpdateScheduler),
                         App.axaml (трей-приложение: окно создаётся по требованию, отключение при выходе и завершении сеанса),
                         TrayController, ServerFlags, Controls/QrCodeView, Assets (значки .ico, flags/*.png),
                         Views (MainView, SettingsView, PresetEditorView), Platform/: XrayProcessRunner + JobObject,
                         WinInetSystemProxy, WindowsElevation (runas), WindowsAutostart (Run), WindowsScreenCapture (GDI),
                         FileLoggerProvider, WindowsAppPaths,
                         SingleInstance (именованный mutex: второй запуск только активирует окно первого)
-src/SimpleVpn.Android   (позже — свой Application и свои View поверх SimpleVpn.App)
-tests/SimpleVpn.Core.Tests  парсер, генератор (golden-файлы + все встроенные пресеты через настоящий `xray run -test`),
+src/SimpleXray.Android   (позже — свой Application и свои View поверх SimpleXray.App)
+tests/SimpleXray.Core.Tests  парсер, генератор (golden-файлы + все встроенные пресеты через настоящий `xray run -test`),
                             пресеты (валидация, хранилище), GeoUpdater на локальном HTTP-сервере (TestHttpServer),
                             ConnectionManager на фейках, хранилище
-tests/SimpleVpn.App.Tests   локализация (паритет RU/EN, тексты для всех кодов ошибок), MainViewModel, SettingsViewModel + редактор
+tests/SimpleXray.App.Tests   локализация (паритет RU/EN, тексты для всех кодов ошибок), MainViewModel, SettingsViewModel + редактор
 tools/fetch-xray.ps1    скачивает xray.exe, wintun.dll (с проверкой .dgst) и geo-файлы runetfreedom (с проверкой sha256) в assets/
-tools/make-zip.ps1      релизный архив publish/SimpleVpn-<версия>-win-x64.zip (portable + README.txt из docs/README-friends.txt)
-tools/fetch-flags.ps1   картинки флагов flagcdn.com → src/SimpleVpn.Desktop/Assets/flags (закоммичены, запускать только для обновления)
+tools/make-zip.ps1      релизный архив publish/SimpleXray-<версия>-win-x64.zip (portable + README.txt из docs/README-friends.txt)
+tools/fetch-flags.ps1   картинки флагов flagcdn.com → src/SimpleXray.Desktop/Assets/flags (закоммичены, запускать только для обновления)
 tools/make-icons.ps1    рисует значки приложения и трея (закоммичены)
 assets/                 результат fetch-xray (в .gitignore); Desktop копирует его в core/ и geo/ рядом с exe
 ```
@@ -91,8 +91,8 @@ assets/                 результат fetch-xray (в .gitignore); Desktop �
 powershell -ExecutionPolicy Bypass -File tools/fetch-xray.ps1   # один раз после клонирования; -Force, -Proxy http://127.0.0.1:10809
 dotnet build
 dotnet test
-dotnet run --project src/SimpleVpn.Desktop                       # аргументы: --lang en|ru, --software-rendering
-dotnet publish src/SimpleVpn.Desktop -c Release -r win-x64 --self-contained -o publish/SimpleVpn
+dotnet run --project src/SimpleXray.Desktop                       # аргументы: --lang en|ru, --software-rendering
+dotnet publish src/SimpleXray.Desktop -c Release -r win-x64 --self-contained -o publish/SimpleXray
 powershell -ExecutionPolicy Bypass -File tools/make-zip.ps1     # publish + архив для друзей (-SkipPublish — только упаковать)
 ```
 
@@ -115,6 +115,7 @@ CI: `.github/workflows/build.yml` (windows-latest: fetch-xray → build → test
 - Списки отдают `ToString()` элементов в UI Automation. У record `ToString()` печатает все поля, поэтому `ServerProfile.ToString()` переопределён на имя: иначе UUID виден программам экранного доступа.
 - Avalonia, компилируемые привязки: `IsVisible` и `DataContext` на одном элементе не сочетай — `IsVisible` будет искаться в новом `DataContext`. Оборачивай в `Panel` (см. MainView, SettingsView).
 - Строки `.resx` раньше генерировались скриптом; теперь источник истины — сами `Strings.resx` и `Strings.en.resx`. Новые ключи добавляй в оба файла: тест паритета это проверяет.
+- Старое имя `SimpleVpn` осталось только в миграции автозапуска (`WindowsAutostart.MigrateLegacyEntry`) и в истории — не «переименовывай» его там.
 - Не оставляй в Bash-командах `cat` без входных данных (например `cat >> /dev/null;`): команда повиснет, ожидая stdin, и это выглядит как зависание тестов.
 - xunit 4: атрибут отключения параллельности — `[assembly: Xunit.v3.Parallelization(Mode = Xunit.Sdk.ParallelMode.None)]`; пропуск теста — `Assert.SkipUnless(...)`.
 - В Git Bash heredoc с кириллицей и `…` внутри длинной составной команды может сломать разбор — большие файлы пиши инструментом Write.
@@ -125,10 +126,10 @@ CI: `.github/workflows/build.yml` (windows-latest: fetch-xray → build → test
 2. **Никогда не оставлять пользователя без интернета.** Приложение работает в одном экземпляре на пользователя (`SingleInstance` в `Program.Main` — до логгера и `RecoverAfterCrash`): второй экземпляр сбросил бы прокси первого или запомнил бы его как «прежний». Системный прокси откатывается при отключении, при падении xray и при следующем старте после сбоя (флаг в `state.json`). Любая ошибка в `ConnectAsync` откатывает уже применённые шаги.
 3. **Одно ядро — Xray.** Конфиг Xray генерируется только в `XrayConfigBuilder` из моделей (профиль + пресет + режим + настройки). Нельзя собирать JSON конфига строками в других местах.
 4. **Версия Xray зафиксирована.** Не обновляй ядро «заодно»: XHTTP-параметры меняются между версиями и должны совпадать с сервером. После любого изменения генератора или версии ядра тест `Build_ProducesConfigAcceptedByXray` прогоняет конфиги через настоящий `xray run -test` и падает на любых «deprecated», кроме предупреждений о самих транспортах WS/gRPC. Пример: `allowInsecure` удалён в Xray 26 (замена — `pcs`/`vcn` = `pinnedPeerCertSha256`/`verifyPeerCertByName`), поэтому флаг из ссылки хранится только для экспорта.
-5. **Пресеты — данные, не код.** Встроенные пресеты лежат в JSON-ресурсах (`Core/Routing/Presets/*.json`), пользовательские — в `%APPDATA%\SimpleVpn\presets\<id>.json`. Встроенные неизменяемы, их можно только дублировать. Домены и IP внутри правила — ИЛИ (генератор разбивает правило), остальные поля — И. Новая категория geosite/geoip во встроенном пресете проверяется тестом с настоящим xray.
+5. **Пресеты — данные, не код.** Встроенные пресеты лежат в JSON-ресурсах (`Core/Routing/Presets/*.json`), пользовательские — в `%APPDATA%\SimpleXray\presets\<id>.json`. Встроенные неизменяемы, их можно только дублировать. Домены и IP внутри правила — ИЛИ (генератор разбивает правило), остальные поля — И. Новая категория geosite/geoip во встроенном пресете проверяется тестом с настоящим xray.
 6. **Geo-обновление безопасно:** условный GET → временный файл → проверка sha256/валидности → атомарная замена с `.bak` → перезапуск ядра, если оно запущено, и откат при неудаче. Сначала прямая загрузка, затем через активный прокси.
 7. **TUN требует прав администратора.** Приложение запускается как `asInvoker` и при необходимости перезапускает себя через `runas` с флагом `--connect`. Не ставь `requireAdministrator` в манифест.
-8. **Секреты и приватность.** UUID/ключи из профилей не должны попадать в логи, исключения и диагностику. Access-лог Xray выключен (`"access": "none"`), иначе в наш лог (`logs\simplevpn.log`) пишется история посещённых сайтов.
+8. **Секреты и приватность.** UUID/ключи из профилей не должны попадать в логи, исключения и диагностику. Access-лог Xray выключен (`"access": "none"`), иначе в наш лог (`logs\simplexray.log`) пишется история посещённых сайтов.
 9. **Ошибки — коды, не строки.** Core сообщает `ConnectionErrorCode` / `LinkParseError`; UI превращает их в текст через ключи `Error_<Code>` / `LinkError_<Code>` (тест проверяет, что для каждого кода есть строка). Технические детали (вывод xray) — только в лог.
 10. **Задел на будущее без реализации:** поле `process` в правилах (per-app), `IProfileSource` (подписки), отдельные View для Android. Не реализуй это до соответствующего этапа, но и не ломай.
 
@@ -145,4 +146,3 @@ CI: `.github/workflows/build.yml` (windows-latest: fetch-xray → build → test
 
 - TUN: проверить трафик через настоящий сервер (XHTTP) и кнопку перезапуска через UAC.
 - Способ встраивания Xray на Android — исследовать до M6.
-- Финальное название приложения.

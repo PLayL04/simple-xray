@@ -1,22 +1,22 @@
-# Builds the release archive for friends: publish/SimpleVpn-<version>-win-x64.zip with a SimpleVpn\ folder
+# Builds the release archive for friends: publish/SimpleXray-<version>-win-x64.zip with a SimpleXray\ folder
 # inside (self-contained app, Xray core, geo files, the "portable" marker and README.txt).
-# Run tools/fetch-xray.ps1 first. -SkipPublish packs an existing publish/SimpleVpn (used by CI).
+# Run tools/fetch-xray.ps1 first. -SkipPublish packs an existing publish/SimpleXray (used by CI).
 param([switch]$SkipPublish)
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
 
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $version = ([xml](Get-Content (Join-Path $root 'Directory.Build.props'))).Project.PropertyGroup.Version
-$out = Join-Path $root 'publish\SimpleVpn'
-$zip = Join-Path $root "publish\SimpleVpn-$version-win-x64.zip"
+$out = Join-Path $root 'publish\SimpleXray'
+$zip = Join-Path $root "publish\SimpleXray-$version-win-x64.zip"
 
 if (-not $SkipPublish) {
     if (Test-Path $out) { Remove-Item $out -Recurse -Force }
-    dotnet publish (Join-Path $root 'src\SimpleVpn.Desktop') -c Release -r win-x64 --self-contained -o $out
+    dotnet publish (Join-Path $root 'src\SimpleXray.Desktop') -c Release -r win-x64 --self-contained -o $out
     if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed ($LASTEXITCODE)" }
 }
 
-foreach ($required in 'SimpleVpn.exe', 'core\xray.exe', 'core\wintun.dll', 'geo\geoip.dat', 'geo\geosite.dat') {
+foreach ($required in 'SimpleXray.exe', 'core\xray.exe', 'core\wintun.dll', 'geo\geoip.dat', 'geo\geosite.dat') {
     if (-not (Test-Path (Join-Path $out $required))) { throw "$required is missing in $out (run tools/fetch-xray.ps1 before publishing)" }
 }
 
@@ -31,7 +31,7 @@ if (Test-Path $zip) { Remove-Item $zip -Force }
 $archive = [System.IO.Compression.ZipFile]::Open($zip, [System.IO.Compression.ZipArchiveMode]::Create)
 try {
     foreach ($file in Get-ChildItem $out -Recurse -File) {
-        $name = 'SimpleVpn/' + $file.FullName.Substring($out.Length + 1).Replace('\', '/')
+        $name = 'SimpleXray/' + $file.FullName.Substring($out.Length + 1).Replace('\', '/')
         [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($archive, $file.FullName, $name, [System.IO.Compression.CompressionLevel]::Optimal) | Out-Null
     }
 }

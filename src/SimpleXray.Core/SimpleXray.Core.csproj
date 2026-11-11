@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>SimpleXray.Core</RootNamespace>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <IsTrimmable>true</IsTrimmable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="ZXing.Net" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Routing\Presets\*.json" LogicalName="SimpleXray.Core.Routing.Presets.%(Filename).json" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="SimpleXray.Core.Tests" />
+  </ItemGroup>
+</Project>

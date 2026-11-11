@@ -49,7 +49,7 @@ function Get-Sha256([string]$Path) {
     (Get-FileHash -Algorithm SHA256 -Path $Path).Hash.ToLowerInvariant()
 }
 
-$tmp = Join-Path ([IO.Path]::GetTempPath()) ("simplevpn-fetch-" + [Guid]::NewGuid().ToString('N'))
+$tmp = Join-Path ([IO.Path]::GetTempPath()) ("simplexray-fetch-" + [Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Force -Path $tmp, $coreDir, $geoDir | Out-Null
 
 try {
