@@ -35,3 +35,13 @@ powershell -ExecutionPolicy Bypass -File tools/make-zip.ps1     # portable-ар�
 - `tests/` — тесты xunit. Сгенерированные конфиги проверяются настоящим `xray run -test`.
 
 Подробности, решения и дорожная карта описаны в [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Памятка для пользователей, которая кладётся в архив, — [docs/README-friends.txt](docs/README-friends.txt).
+
+## Лицензия
+
+Код проекта распространяется по [0BSD](LICENSE): его можно использовать, изменять и распространять как угодно, без условий и без указания автора.
+
+У сторонних компонентов свои лицензии:
+- Xray-core — MPL-2.0 (файл `core/LICENSE` в архиве);
+- Wintun — лицензия WireGuard LLC на готовые бинарники;
+- картинки флагов flagcdn.com — общественное достояние;
+- NuGet-пакеты (Avalonia, CommunityToolkit.Mvvm, ZXing.Net и др.) — MIT или Apache-2.0.
